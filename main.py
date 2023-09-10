@@ -1,15 +1,41 @@
-from classes import SpreadsheetParser, MemberSummary
+from classes import SpreadsheetParser, MonthlySummary, Person, EmailGenerator
+import json
+import logging
+import sys
+from datetime import date
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+
+
+def load_config(config_file="config.json"):
+    """Load configuration from a JSON file."""
+    try:
+        with open(config_file, "r") as f:
+            return json.load(f), None
+    except FileNotFoundError:
+        return None, "Configuration file not found."
+    except json.JSONDecodeError:
+        return None, "Failed to decode JSON from configuration file."
 
 
 def main():
-    summary = MemberSummary()
-    summary.open()
+    config, error_msg = load_config()
+    if config is None:
+        logging.error(f"{error_msg}. Exiting.")
+        sys.exit(1)
 
-    parser = SpreadsheetParser()
-    parsed_transactions = parser.parse('test_transactions.csv')
+    people = []
+    for person in config["People"]:
+        name = person["Name"][0]
+        accounts = person["Accounts"]
+        people.append(Person(name, accounts))
 
-    summary.add_transactions(parsed_transactions)
+    summary = MonthlySummary(people, date.today())
+    parsed_transactions = SpreadsheetParser.parse("test_transactions.csv")
+    summary.add_all_transactions(parsed_transactions)
 
+    email_content = EmailGenerator.generate_summary_email(summary)
 
 
 if __name__ == "__main__":

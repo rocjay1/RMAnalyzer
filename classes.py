@@ -27,10 +27,10 @@ class Transaction:
 
 
 class Person:
-    def __init__(self, name, account_numbers):
+    def __init__(self, name, account_numbers, transactions: list[Transaction]):
         self.name = name
         self.account_numbers = account_numbers
-        self.transactions: list[Transaction] = []
+        self.transactions = transactions
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
@@ -105,7 +105,7 @@ class EmailGenerator:
             for category in Category:
                 html += f"                    <td>{person.calculate_expenses(category)}</td>\n"
             html += f"                    <td>{person.calculate_expenses()}</td>\n"
-            html += "                </tr>\n"
+            html += "                </tr>\n"  # in the case of 2, add row for diff?
         html += "            </tbody>\n        </table>\n"
 
         html += """\

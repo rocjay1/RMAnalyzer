@@ -18,6 +18,7 @@ def load_config(config_file="config.json"):
     except json.JSONDecodeError:
         return None, "Failed to decode JSON from configuration file."
 
+# <function to send email>
 
 def main():
     config, error_msg = load_config()
@@ -29,13 +30,19 @@ def main():
     for person in config["People"]:
         name = person["Name"][0]
         accounts = person["Accounts"]
-        people.append(Person(name, accounts))
+        transactions = []
+        people.append(Person(name, accounts, transactions))
 
-    summary = MonthlySummary(people, date.today())
-    parsed_transactions = SpreadsheetParser.parse("test_transactions.csv")
+    summary = MonthlySummary(
+        people, date.today()
+    )  # pass in date to the script? In case analyzing last month
+    parsed_transactions = SpreadsheetParser.parse(
+        "test_transactions.csv"
+    )  # CSV will likely be script arg as well
     summary.add_all_transactions(parsed_transactions)
 
     email_content = EmailGenerator.generate_summary_email(summary)
+    print(email_content)
 
 
 if __name__ == "__main__":

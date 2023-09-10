@@ -1,28 +1,16 @@
-import json
-from classes import Person, SpreadsheetParser
+from classes import SpreadsheetParser, MemberSummary
 
-def load_config(config_file="config.json"):
-        """Load configuration from a JSON file."""
-        try:
-            with open(config_file, "r") as f:
-                return json.load(f), None
-        except FileNotFoundError:
-            return None, "Configuration file not found."
-        except json.JSONDecodeError:
-            return None, "Failed to decode JSON from configuration file."
 
 def main():
-    people = []
-    
-    config, error = load_config()
-    if config != None:
-        for person in config['People']:
-            name = person['Name'][0]
-            account_numbers = person['Accounts']
-            people.append(Person(name, account_numbers))
+    summary = MemberSummary()
+    summary.open()
 
-    parser = SpreadsheetParser('test_transactions.csv', people)
-    parser.parse()
+    parser = SpreadsheetParser()
+    parsed_transactions = parser.parse('test_transactions.csv')
+
+    summary.add_transactions(parsed_transactions)
+
+
 
 if __name__ == "__main__":
     main()

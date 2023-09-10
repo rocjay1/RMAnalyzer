@@ -1,6 +1,5 @@
 import csv
 
-
 class Transaction:
     def __init__(self, date, name, account_number, amount, category):
         self.date = date
@@ -9,9 +8,7 @@ class Transaction:
         self.amount = amount
         self.category = category
 
-
 class Person:
-
     def __init__(self, name, account_numbers):
         self.name = name
         self.account_numbers = account_numbers
@@ -24,7 +21,6 @@ class Person:
         if category:
             return sum([t.amount for t in self.transactions if t.category == category])
         return sum([t.amount for t in self.transactions])
-
 
 class SpreadsheetParser:
     def __init__(self, filepath, people):

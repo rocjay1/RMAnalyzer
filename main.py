@@ -1,10 +1,7 @@
 import json
 from classes import Person, SpreadsheetParser
 
-
-def main():
-
-    def load_config(config_file="config.json"):
+def load_config(config_file="config.json"):
         """Load configuration from a JSON file."""
         try:
             with open(config_file, "r") as f:
@@ -13,9 +10,10 @@ def main():
             return None, "Configuration file not found."
         except json.JSONDecodeError:
             return None, "Failed to decode JSON from configuration file."
-    
 
+def main():
     people = []
+    
     config, error = load_config()
     if config != None:
         for person in config['People']:
@@ -23,10 +21,8 @@ def main():
             account_numbers = person['Accounts']
             people.append(Person(name, account_numbers))
 
-
     parser = SpreadsheetParser('test_transactions.csv', people)
     parser.parse()
-
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@ from classes import SpreadsheetParser, MonthlySummary, Person, EmailGenerator
 import json
 import logging
 import sys
-from datetime import date
+from datetime import datetime
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -18,9 +18,15 @@ def load_config(config_file="config.json"):
     except json.JSONDecodeError:
         return None, "Failed to decode JSON from configuration file."
 
+
 # <function to send email>
 
+
 def main():
+    # script args
+    str_date = "9/23"
+    spreadsheet_path = "test_transactions.csv"
+
     config, error_msg = load_config()
     if config is None:
         logging.error(f"{error_msg}. Exiting.")
@@ -33,12 +39,9 @@ def main():
         transactions = []
         people.append(Person(name, accounts, transactions))
 
-    summary = MonthlySummary(
-        people, date.today()
-    )  # pass in date to the script? In case analyzing last month
-    parsed_transactions = SpreadsheetParser.parse(
-        "test_transactions.csv"
-    )  # CSV will likely be script arg as well
+    date = datetime.strptime(str_date, "%m/%y").date()
+    summary = MonthlySummary(people, date)
+    parsed_transactions = SpreadsheetParser.parse(spreadsheet_path)
     summary.add_all_transactions(parsed_transactions)
 
     email_content = EmailGenerator.generate_summary_email(summary)

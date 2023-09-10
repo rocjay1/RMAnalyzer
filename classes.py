@@ -44,6 +44,7 @@ class Person:
 class MonthlySummary:
     def __init__(self, people: list[Person], date: date):
         self.people = people
+        self.size = len(people)
         self.date = date
 
     def add_persons_transactions(
@@ -59,6 +60,13 @@ class MonthlySummary:
     def add_all_transactions(self, parsed_transactions: list[Transaction]):
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
+
+    def calculate_difference(
+        self, person1: Person, person2: Person, category: Category = None
+    ):
+        return person1.calculate_expenses(category) - person2.calculate_expenses(
+            category
+        )
 
 
 class SpreadsheetParser:
@@ -95,7 +103,7 @@ class EmailGenerator:
         html += "            <thead>\n                <tr>\n"
         for category in Category:
             html += f"                    <th>{category.value}</th>\n"
-        html += "                    <th>Total</th>\n"
+        html += "                    <th><strong>Total</strong></th>\n"
         html += "                </tr>\n            </thead>\n"
 
         html += "            <tbody>\n"
@@ -105,7 +113,19 @@ class EmailGenerator:
             for category in Category:
                 html += f"                    <td>{person.calculate_expenses(category)}</td>\n"
             html += f"                    <td>{person.calculate_expenses()}</td>\n"
-            html += "                </tr>\n"  # in the case of 2, add row for diff?
+            html += "                </tr>\n"
+        # for now, in the case of 2 (always the case) add diff row
+        if summary.size == 2:
+            person1 = summary.people[0]
+            person2 = summary.people[1]
+            html += "                <tr>\n"
+            html += (
+                f"                    <td>Diff ({person1.name} - {person2.name})</td>\n"
+            )
+            for category in Category:
+                html += f"                    <td>{summary.calculate_difference(person1, person2, category)}</td>\n"
+            html += f"                    <td>{summary.calculate_difference(person1, person2)}</td>\n"
+            html += "                </tr>\n"
         html += "            </tbody>\n        </table>\n"
 
         html += """\

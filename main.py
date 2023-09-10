@@ -2,10 +2,12 @@ from classes import SpreadsheetParser, MonthlySummary, Person, EmailGenerator
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import date
+import boto3
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO)
+# Setup logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def load_config(config_file="config.json"):
@@ -19,13 +21,30 @@ def load_config(config_file="config.json"):
         return None, "Failed to decode JSON from configuration file."
 
 
-# <function to send email>
+def read_s3_file(bucket, key):
+    s3 = boto3.client("s3")
+    response = s3.get_object(Bucket=bucket, Key=key)
+    return response["Body"].read().decode("utf-8")
 
 
-def main():
-    # script args
-    str_date = "9/23"
-    spreadsheet_path = "test_transactions.csv"
+def send_email(source, to_addresses, subject, html_body, text_body=None):
+    ses = boto3.client("ses")
+    if not text_body:
+        text_body = html_body
+    response = ses.send_email(
+        Source=source,
+        Destination={"ToAddresses": to_addresses},
+        Message={
+            "Subject": {"Data": subject},
+            "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
+        },
+    )
+    return response
+
+
+def process_file(file_path):
+    bucket, key = file_path.replace("s3://", "").split("/", 1)
+    file_content = read_s3_file(bucket, key)
 
     config, error_msg = load_config()
     if config is None:
@@ -39,14 +58,15 @@ def main():
         transactions = []
         people.append(Person(name, accounts, transactions))
 
-    date = datetime.strptime(str_date, "%m/%y").date()
-    summary = MonthlySummary(people, date)
-    parsed_transactions = SpreadsheetParser.parse(spreadsheet_path)
+    summary = MonthlySummary(people, date.today())
+    parsed_transactions = SpreadsheetParser.parse(file_content)
     summary.add_all_transactions(parsed_transactions)
 
-    email_content = EmailGenerator.generate_summary_email(summary)
-    print(email_content)
+    html_body = EmailGenerator.generate_summary_email(summary)
 
 
-if __name__ == "__main__":
-    main()
+def lambda_handler(event, context):
+    bucket = event["Records"][0]["s3"]["bucket"]["name"]
+    key = event["Records"][0]["s3"]["object"]["key"]
+    file_path = f"s3://{bucket}/{key}"
+    process_file(file_path)

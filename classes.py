@@ -64,26 +64,23 @@ class MonthlySummary:
     def calculate_difference(
         self, person1: Person, person2: Person, category: Category = None
     ):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(
-            category
-        )
+        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
 
 
 class SpreadsheetParser:
     @staticmethod
-    def parse(filepath):
+    def parse(file_content):
         results = []
-        with open(filepath, "r") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                transaction = Transaction(
-                    date=datetime.strptime(row["Date"], "%Y-%m-%d").date(),
-                    name=str(row["Name"]),
-                    account_number=int(row["Account Number"]),
-                    amount=float(row["Amount"]),
-                    category=Category(row["Category"]),
-                )
-                results.append(transaction)
+        reader = csv.DictReader(file_content)
+        for row in reader:
+            transaction = Transaction(
+                date=datetime.strptime(row["Date"], "%Y-%m-%d").date(),
+                name=str(row["Name"]),
+                account_number=int(row["Account Number"]),
+                amount=float(row["Amount"]),
+                category=Category(row["Category"]),
+            )
+            results.append(transaction)
         return results
 
 

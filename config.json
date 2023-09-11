@@ -1,7 +1,23 @@
 {
     "People": [
-        {"Name": ["Rocco"], "Accounts": [1122, 3550, 3701], "Email": ["jasonroc19@gmail.com"]},
-        {"Name": ["Tori"], "Accounts": [2972, 2681, 4985], "Email": ["vcbarr1@gmail.com"]}
+        {
+            "Name": "Rocco",
+            "Accounts": [
+                1122,
+                3550,
+                3701
+            ],
+            "Email": "jasonroc19@gmail.com"
+        },
+        {
+            "Name": "Tori",
+            "Accounts": [
+                2972,
+                2681,
+                4985
+            ],
+            "Email": "vcbarr1@gmail.com"
+        }
     ],
-    "SourceEmail": ["jasonroc19@gmail.com"]
+    "SourceEmail": "jasonroc19@gmail.com"
 }

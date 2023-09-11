@@ -1,7 +1,12 @@
 import csv
 from datetime import datetime
-from datetime import date
 from enum import Enum
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
+
+DATE_FORMAT = "%Y-%m-%d"
 
 
 class Category(Enum):
@@ -11,14 +16,7 @@ class Category(Enum):
 
 
 class Transaction:
-    def __init__(
-        self,
-        date: date,
-        name: str,
-        account_number: int,
-        amount: float,
-        category: Category,
-    ):
+    def __init__(self, date, name, account_number, amount, category):
         self.date = date
         self.name = name
         self.account_number = account_number
@@ -27,30 +25,27 @@ class Transaction:
 
 
 class Person:
-    def __init__(self, name, email, account_numbers, transactions: list[Transaction]):
+    def __init__(self, name, email, account_numbers, transactions=None):
         self.name = name
         self.email = email
         self.account_numbers = account_numbers
-        self.transactions = transactions
+        self.transactions = transactions or []
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
 
-    def calculate_expenses(self, category: Category = None):
+    def calculate_expenses(self, category=None):
         if category:
-            return sum([t.amount for t in self.transactions if t.category == category])
-        return sum([t.amount for t in self.transactions])
+            return sum(t.amount for t in self.transactions if t.category == category)
+        return sum(t.amount for t in self.transactions)
 
 
 class MonthlySummary:
-    def __init__(self, people: list[Person], date: date):
+    def __init__(self, people, current_date):
         self.people = people
-        self.size = len(people)
-        self.date = date
+        self.date = current_date
 
-    def add_persons_transactions(
-        self, parsed_transactions: list[Transaction], person: Person
-    ):
+    def add_persons_transactions(self, parsed_transactions, person):
         for transaction in parsed_transactions:
             if (
                 transaction.account_number in person.account_numbers
@@ -58,13 +53,11 @@ class MonthlySummary:
             ):
                 person.add_transaction(transaction)
 
-    def add_all_transactions(self, parsed_transactions: list[Transaction]):
+    def add_all_transactions(self, parsed_transactions):
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
-    def calculate_difference(
-        self, person1: Person, person2: Person, category: Category = None
-    ):
+    def calculate_difference(self, person1, person2, category=None):
         return person1.calculate_expenses(category) - person2.calculate_expenses(
             category
         )
@@ -74,62 +67,55 @@ class SpreadsheetParser:
     @staticmethod
     def parse(file_content):
         results = []
-        reader = csv.DictReader(file_content)
+        reader = csv.DictReader(file_content.splitlines())
         for row in reader:
-            transaction = Transaction(
-                date=datetime.strptime(row["Date"], "%Y-%m-%d").date(),
-                name=str(row["Name"]),
-                account_number=int(row["Account Number"]),
-                amount=float(row["Amount"]),
-                category=Category(row["Category"]),
-            )
-            results.append(transaction)
+            try:
+                transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
+                transaction_name = row["Name"]
+                transaction_account_number = int(row["Account Number"])
+                transaction_amount = float(row["Amount"])
+                transaction_category = Category(row["Category"])
+
+                transaction = Transaction(
+                    transaction_date,
+                    transaction_name,
+                    transaction_account_number,
+                    transaction_amount,
+                    transaction_category,
+                )
+                results.append(transaction)
+            except (ValueError, KeyError) as e:
+                logger.error(f"Invalid transaction data in row {row}: {str(e)}")
+                continue
         return results
 
 
 class EmailGenerator:
     @staticmethod
-    def generate_summary_email(summary: MonthlySummary):
-        html = """\
-    <html>
-        <head></head>
-        <body>
-    """
-
+    def generate_summary_email(summary):
+        html = """<html><head></head><body>"""
         display_date = summary.date.strftime("%m/%y")
-        html += f"    <h1>Summary for {display_date}:</h1>\n"
-
-        html += "        <table border='1'>\n"
-        html += "            <thead>\n                <tr>\n"
+        html += (
+            f"<h1>Summary for {display_date}:</h1>\n<table border='1'>\n<thead>\n<tr>\n"
+        )
         for category in Category:
-            html += f"                    <th>{category.value}</th>\n"
-        html += "                    <th><strong>Total</strong></th>\n"
-        html += "                </tr>\n            </thead>\n"
-
-        html += "            <tbody>\n"
+            html += f"<th>{category.value}</th>\n"
+        html += "<th><strong>Total</strong></th>\n</tr>\n</thead>\n<tbody>\n"
         for person in summary.people:
-            html += "                <tr>\n"
-            html += f"                    <td>{person.name}</td>\n"
+            html += "<tr>\n"
+            html += f"<td>{person.name}</td>\n"
             for category in Category:
-                html += f"                    <td>{person.calculate_expenses(category)}</td>\n"
-            html += f"                    <td>{person.calculate_expenses()}</td>\n"
-            html += "                </tr>\n"
-        # for now, in the case of 2 (always the case) add diff row
-        if summary.size == 2:
-            person1 = summary.people[0]
-            person2 = summary.people[1]
-            html += "                <tr>\n"
-            html += (
-                f"                    <td>Diff ({person1.name} - {person2.name})</td>\n"
-            )
+                html += f"<td>{person.calculate_expenses(category)}</td>\n"
+            html += f"<td>{person.calculate_expenses()}</td>\n"
+            html += "</tr>\n"
+        # Assuming there will always be exactly 2 people for the difference calculation
+        if len(summary.people) == 2:
+            person1, person2 = summary.people
+            html += "<tr>\n"
+            html += f"<td>Diff ({person1.name} - {person2.name})</td>\n"
             for category in Category:
-                html += f"                    <td>{summary.calculate_difference(person1, person2, category)}</td>\n"
-            html += f"                    <td>{summary.calculate_difference(person1, person2)}</td>\n"
-            html += "                </tr>\n"
-        html += "            </tbody>\n        </table>\n"
-
-        html += """\
-        </body>
-    </html>
-    """
+                html += f"<td>{summary.calculate_difference(person1, person2, category)}</td>\n"
+            html += f"<td>{summary.calculate_difference(person1, person2)}</td>\n"
+            html += "</tr>\n"
+        html += "</tbody>\n</table>\n</body>\n</html>"
         return html

@@ -27,8 +27,9 @@ class Transaction:
 
 
 class Person:
-    def __init__(self, name, account_numbers, transactions: list[Transaction]):
+    def __init__(self, name, email, account_numbers, transactions: list[Transaction]):
         self.name = name
+        self.email = email
         self.account_numbers = account_numbers
         self.transactions = transactions
 
@@ -64,7 +65,9 @@ class MonthlySummary:
     def calculate_difference(
         self, person1: Person, person2: Person, category: Category = None
     ):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
+        return person1.calculate_expenses(category) - person2.calculate_expenses(
+            category
+        )
 
 
 class SpreadsheetParser:

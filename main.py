@@ -51,18 +51,23 @@ def process_file(file_path):
         logging.error(f"{error_msg}. Exiting.")
         sys.exit(1)
 
-    people = []
+    people: list[Person] = []
     for person in config["People"]:
         name = person["Name"][0]
         accounts = person["Accounts"]
+        email = person["Email"][0]
         transactions = []
-        people.append(Person(name, accounts, transactions))
+        people.append(Person(name, email, accounts, transactions))
 
     summary = MonthlySummary(people, date.today())
     parsed_transactions = SpreadsheetParser.parse(file_content)
     summary.add_all_transactions(parsed_transactions)
 
+    source_email = config["SourceEmail"][0]
+    to_addresses = [p.email for p in people]
+    subject = f"Monthly Summary for {summary.date}"
     html_body = EmailGenerator.generate_summary_email(summary)
+    send_email(source_email, to_addresses, subject, html_body)
 
 
 def lambda_handler(event, context):

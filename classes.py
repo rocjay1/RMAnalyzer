@@ -3,8 +3,8 @@ from datetime import datetime
 from enum import Enum
 import logging
 
-# Setup logging
 logger = logging.getLogger(__name__)
+
 
 DATE_FORMAT = "%Y-%m-%d"
 
@@ -36,8 +36,8 @@ class Person:
 
     def calculate_expenses(self, category=None):
         if category:
-            return sum(t.amount for t in self.transactions if t.category == category)
-        return sum(t.amount for t in self.transactions)
+            return round(sum(t.amount for t in self.transactions if t.category == category), 2)
+        return round(sum(t.amount for t in self.transactions), 2)
 
 
 class MonthlySummary:
@@ -58,9 +58,7 @@ class MonthlySummary:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(
-            category
-        )
+        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
 
 
 class SpreadsheetParser:

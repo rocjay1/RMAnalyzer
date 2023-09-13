@@ -9,16 +9,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def load_config(config_file="config.json"):
-    """Load configuration from a JSON file."""
-    try:
-        with open(config_file, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.error(str(e))
-        raise
-
-
 def read_s3_file(bucket, key):
     s3 = boto3.client("s3")
     try:
@@ -48,6 +38,16 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         raise
 
 
+def load_config(config_file="config.json"):
+    """Load configuration from a JSON file."""
+    try:
+        with open(config_file, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(str(e))
+        raise
+
+
 def build_summary(file_content, config):
     people = []
     for person_config in config["People"]:
@@ -55,8 +55,8 @@ def build_summary(file_content, config):
         accounts = person_config["Accounts"]
         email = person_config["Email"]
         people.append(Person(name, email, accounts, []))
-
-    summary = MonthlySummary(people, date.today())
+        
+    summary = MonthlySummary(people, date.today(), config["Owner"])
     parsed_transactions = SpreadsheetParser.parse(file_content)
     summary.add_all_transactions(parsed_transactions)
     return summary
@@ -64,17 +64,10 @@ def build_summary(file_content, config):
 
 def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
-
     file_content = read_s3_file(bucket, key)
-
-    config = load_config()
-    summary = build_summary(file_content, config)
-
-    source_email = config["SourceEmail"]
-    to_addresses = [p.email for p in summary.people]
-    subject = f"Monthly Summary for {summary.date}"
-    html_body = EmailGenerator.generate_summary_email(summary)
-    send_email(source_email, to_addresses, subject, html_body)
+    summary = build_summary(file_content, load_config())
+    summary_email = EmailGenerator.generate_summary_email(summary)
+    send_email(summary_email)
 
 
 def lambda_handler(event, context):

@@ -12,8 +12,11 @@ class NonLambdaTests(unittest.TestCase):
         self.summary = build_summary(file_content, load_config())
 
     def test_email_generation(self):
-        html_body = EmailGenerator.generate_summary_email(self.summary)
-        result_string = """<html><head></head><body><h1>Summary for 09/23:</h1>
+        test_email = EmailGenerator.generate_summary_email(self.summary)
+        result_source = "jasonroc19@gmail.com"
+        result_to = ["jasonroc19@gmail.com", "vcbarr1@gmail.com"]
+        result_subject = "Monthly Summary for 09/23"
+        result_html = """<html><head></head><body><h1>Summary for 09/23:</h1>
 <table border='1'>
 <thead>
 <tr>
@@ -49,7 +52,9 @@ class NonLambdaTests(unittest.TestCase):
 </table>
 </body>
 </html>"""
-        self.assertEqual(html_body, result_string)
+        self.assertEqual(
+            test_email, (result_source, result_to, result_subject, result_html)
+        )
 
 
 class TestReadS3File(unittest.TestCase):

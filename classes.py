@@ -36,14 +36,17 @@ class Person:
 
     def calculate_expenses(self, category=None):
         if category:
-            return round(sum(t.amount for t in self.transactions if t.category == category), 2)
+            return round(
+                sum(t.amount for t in self.transactions if t.category == category), 2
+            )
         return round(sum(t.amount for t in self.transactions), 2)
 
 
 class MonthlySummary:
-    def __init__(self, people, current_date):
+    def __init__(self, people, current_date, owner):
         self.people = people
         self.date = current_date
+        self.owner = owner
 
     def add_persons_transactions(self, parsed_transactions, person):
         for transaction in parsed_transactions:
@@ -58,7 +61,9 @@ class MonthlySummary:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
+        return person1.calculate_expenses(category) - person2.calculate_expenses(
+            category
+        )
 
 
 class SpreadsheetParser:
@@ -116,4 +121,9 @@ class EmailGenerator:
             html += f"<td>{summary.calculate_difference(person1, person2)}</td>\n"
             html += "</tr>\n"
         html += "</tbody>\n</table>\n</body>\n</html>"
-        return html
+        return (
+            summary.owner,
+            [p.email for p in summary.people],
+            f"Monthly Summary for {display_date}",
+            html
+        )

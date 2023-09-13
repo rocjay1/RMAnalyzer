@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import date
 import boto3
+from botocore import exceptions
 from classes import SpreadsheetParser, MonthlySummary, Person, EmailGenerator
 
 logging.basicConfig(level=logging.INFO)
@@ -23,13 +24,13 @@ def read_s3_file(bucket, key):
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         return response["Body"].read().decode("utf-8")
-    except boto3.exceptions.Boto3Error as e:
+    except exceptions.ClientError as e:
         logger.error(f"Error reading S3 file: {str(e)}")
         raise
 
 
 def send_email(source, to_addresses, subject, html_body, text_body=None):
-    ses = boto3.client("ses")
+    ses = boto3.client("ses", region_name="us-east-1")
     if not text_body:
         text_body = html_body
     try:
@@ -42,7 +43,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
             },
         )
         return response
-    except boto3.exceptions.Boto3Error as e:
+    except exceptions.ClientError as e:
         logger.error(f"Error sending email: {str(e)}")
         raise
 
@@ -58,11 +59,12 @@ def build_summary(file_content, config):
     summary = MonthlySummary(people, date.today())
     parsed_transactions = SpreadsheetParser.parse(file_content)
     summary.add_all_transactions(parsed_transactions)
-
     return summary
+
 
 def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
+
     file_content = read_s3_file(bucket, key)
 
     config = load_config()

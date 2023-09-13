@@ -47,12 +47,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         raise
 
 
-def process_file(file_path):
-    bucket, key = file_path.replace("s3://", "").split("/", 1)
-    file_content = read_s3_file(bucket, key)
-
-    config = load_config()
-
+def build_summary(file_content, config):
     people = []
     for person_config in config["People"]:
         name = person_config["Name"]
@@ -64,8 +59,17 @@ def process_file(file_path):
     parsed_transactions = SpreadsheetParser.parse(file_content)
     summary.add_all_transactions(parsed_transactions)
 
+    return summary
+
+def process_file(file_path):
+    bucket, key = file_path.replace("s3://", "").split("/", 1)
+    file_content = read_s3_file(bucket, key)
+
+    config = load_config()
+    summary = build_summary(file_content, config)
+
     source_email = config["SourceEmail"]
-    to_addresses = [p.email for p in people]
+    to_addresses = [p.email for p in summary.people]
     subject = f"Monthly Summary for {summary.date}"
     html_body = EmailGenerator.generate_summary_email(summary)
     send_email(source_email, to_addresses, subject, html_body)

@@ -3,7 +3,7 @@ import logging
 from datetime import date
 import boto3
 from botocore import exceptions
-from classes import SpreadsheetParser, MonthlySummary, Person, EmailGenerator
+from classes import *
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -48,26 +48,13 @@ def load_config(config_file="config.json"):
         raise
 
 
-def build_summary(file_content, config):
-    people = []
-    for person_config in config["People"]:
-        name = person_config["Name"]
-        accounts = person_config["Accounts"]
-        email = person_config["Email"]
-        people.append(Person(name, email, accounts, []))
-        
-    summary = MonthlySummary(people, date.today(), config["Owner"])
-    parsed_transactions = SpreadsheetParser.parse(file_content)
-    summary.add_all_transactions(parsed_transactions)
-    return summary
-
-
 def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
-    summary = build_summary(file_content, load_config())
-    summary_email = EmailGenerator.generate_summary_email(summary)
-    send_email(summary_email)
+    config = load_config()
+    summary = SpreadsheetSummary(config, date.today(), file_content)
+    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(summary)
+    send_email(source, to_addresses, subject, html_body)
 
 
 def lambda_handler(event, context):

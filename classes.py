@@ -42,11 +42,18 @@ class Person:
         return round(sum(t.amount for t in self.transactions), 2)
 
 
-class MonthlySummary:
-    def __init__(self, people, current_date, owner):
-        self.people = people
-        self.date = current_date
-        self.owner = owner
+class Summary:
+    def __init__(self, config, date):
+        self.date = date
+        self.owner = config["Owner"]
+        self.people = self.initialize_people(config["People"])
+
+    def initialize_people(self, people_config):
+        return [Person(p["Name"], p["Email"], p["Accounts"], []) for p in people_config]
+
+    def add_transactions_from_spreadsheet(self, spreadsheet_content):
+        parsed_transactions = SpreadsheetParser.parse(spreadsheet_content)
+        self.add_transactions(parsed_transactions)
 
     def add_persons_transactions(self, parsed_transactions, person):
         for transaction in parsed_transactions:
@@ -56,14 +63,21 @@ class MonthlySummary:
             ):
                 person.add_transaction(transaction)
 
-    def add_all_transactions(self, parsed_transactions):
+    def add_transactions(self, parsed_transactions):
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(
-            category
+        return round(
+            person1.calculate_expenses(category) - person2.calculate_expenses(category),
+            2,
         )
+
+
+class SpreadsheetSummary(Summary):
+    def __init__(self, config, date, spreadsheet_content):
+        super().__init__(config, date)
+        super().add_transactions_from_spreadsheet(spreadsheet_content)
 
 
 class SpreadsheetParser:
@@ -96,14 +110,32 @@ class SpreadsheetParser:
 class EmailGenerator:
     @staticmethod
     def generate_summary_email(summary):
-        html = """<html><head></head><body>"""
+        html = """<html>
+        <head>
+            <style>
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                }
+                
+                th, td {
+                    border: 1px solid black;
+                    padding: 8px 12px;  /* Add padding to table cells */
+                    text-align: left;
+                }
+
+                th {
+                    background-color: #f2f2f2;  /* A light background color for headers */
+                }
+            </style>
+        </head>
+        <body>"""
         display_date = summary.date.strftime("%m/%y")
-        html += (
-            f"<h1>Summary for {display_date}:</h1>\n<table border='1'>\n<thead>\n<tr>\n"
-        )
+        html += "<table border='1'>\n<thead>\n<tr>\n"
+        html += "<th></th>\n"
         for category in Category:
             html += f"<th>{category.value}</th>\n"
-        html += "<th><strong>Total</strong></th>\n</tr>\n</thead>\n<tbody>\n"
+        html += "<th>Total</th>\n</tr>\n</thead>\n<tbody>\n"
         for person in summary.people:
             html += "<tr>\n"
             html += f"<td>{person.name}</td>\n"
@@ -125,5 +157,5 @@ class EmailGenerator:
             summary.owner,
             [p.email for p in summary.people],
             f"Monthly Summary for {display_date}",
-            html
+            html,
         )

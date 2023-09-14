@@ -53,7 +53,9 @@ def process_file(file_path):
     file_content = read_s3_file(bucket, key)
     config = load_config()
     summary = SpreadsheetSummary(config, date.today(), file_content)
-    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(summary)
+    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(
+        summary
+    )
     send_email(source, to_addresses, subject, html_body)
 
 

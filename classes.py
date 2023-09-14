@@ -7,6 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 DATE_FORMAT = "%Y-%m-%d"
+MONEY_FORMAT = "{0:.2f}"
+
+
+def money_format_helper(num):
+    return MONEY_FORMAT.format(num)
 
 
 class Category(Enum):
@@ -36,10 +41,8 @@ class Person:
 
     def calculate_expenses(self, category=None):
         if category:
-            return round(
-                sum(t.amount for t in self.transactions if t.category == category), 2
-            )
-        return round(sum(t.amount for t in self.transactions), 2)
+            return sum(t.amount for t in self.transactions if t.category == category)
+        return sum(t.amount for t in self.transactions)
 
 
 class Summary:
@@ -67,10 +70,9 @@ class Summary:
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
-    def calculate_difference(self, person1, person2, category=None):
-        return round(
-            person1.calculate_expenses(category) - person2.calculate_expenses(category),
-            2,
+    def calculate_expenses_difference(self, person1, person2, category=None):
+        return person1.calculate_expenses(category) - person2.calculate_expenses(
+            category
         )
 
 
@@ -130,7 +132,7 @@ class EmailGenerator:
             </style>
         </head>
         <body>"""
-        display_date = summary.date.strftime("%m/%y")
+        display_date = summary.date.strftime(DATE_FORMAT)
         html += "<table border='1'>\n<thead>\n<tr>\n"
         html += "<th></th>\n"
         for category in Category:
@@ -140,17 +142,17 @@ class EmailGenerator:
             html += "<tr>\n"
             html += f"<td>{person.name}</td>\n"
             for category in Category:
-                html += f"<td>{person.calculate_expenses(category)}</td>\n"
-            html += f"<td>{person.calculate_expenses()}</td>\n"
+                html += f"<td>{money_format_helper(person.calculate_expenses(category))}</td>\n"
+            html += f"<td>{money_format_helper(person.calculate_expenses())}</td>\n"
             html += "</tr>\n"
         # Assuming there will always be exactly 2 people for the difference calculation
         if len(summary.people) == 2:
             person1, person2 = summary.people
             html += "<tr>\n"
-            html += f"<td>Diff ({person1.name} - {person2.name})</td>\n"
+            html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
             for category in Category:
-                html += f"<td>{summary.calculate_difference(person1, person2, category)}</td>\n"
-            html += f"<td>{summary.calculate_difference(person1, person2)}</td>\n"
+                html += f"<td>{money_format_helper(summary.calculate_expenses_difference(person1, person2, category))}</td>\n"
+            html += f"<td>{money_format_helper(summary.calculate_expenses_difference(person1, person2))}</td>\n"
             html += "</tr>\n"
         html += "</tbody>\n</table>\n</body>\n</html>"
         return (

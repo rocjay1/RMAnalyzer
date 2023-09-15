@@ -5,15 +5,17 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
+# constants
 DATE_FORMAT = "%Y-%m-%d"
 MONEY_FORMAT = "{0:.2f}"
 
 
+# helpers
 def money_format_helper(num):
     return MONEY_FORMAT.format(num)
 
 
+# core classes
 class Category(Enum):
     DINING = "Dining & Drinks"
     GROCERIES = "Groceries"
@@ -71,9 +73,7 @@ class Summary:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_expenses_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(
-            category
-        )
+        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
 
 
 class SpreadsheetSummary(Summary):
@@ -132,12 +132,12 @@ class EmailGenerator:
             </style>
         </head>
         <body>"""
-        display_date = summary.date.strftime(DATE_FORMAT)
-        html += "<table border='1'>\n<thead>\n<tr>\n"
-        html += "<th></th>\n"
+
+        html += "<table border='1'>\n<thead>\n<tr>\n<th></th>\n"
         for category in Category:
             html += f"<th>{category.value}</th>\n"
         html += "<th>Total</th>\n</tr>\n</thead>\n<tbody>\n"
+
         for person in summary.people:
             html += "<tr>\n"
             html += f"<td>{person.name}</td>\n"
@@ -145,6 +145,7 @@ class EmailGenerator:
                 html += f"<td>{money_format_helper(person.calculate_expenses(category))}</td>\n"
             html += f"<td>{money_format_helper(person.calculate_expenses())}</td>\n"
             html += "</tr>\n"
+
         # Assuming there will always be exactly 2 people for the difference calculation
         if len(summary.people) == 2:
             person1, person2 = summary.people
@@ -154,10 +155,11 @@ class EmailGenerator:
                 html += f"<td>{money_format_helper(summary.calculate_expenses_difference(person1, person2, category))}</td>\n"
             html += f"<td>{money_format_helper(summary.calculate_expenses_difference(person1, person2))}</td>\n"
             html += "</tr>\n"
+
         html += "</tbody>\n</table>\n</body>\n</html>"
         return (
             summary.owner,
             [p.email for p in summary.people],
-            f"Monthly Summary for {display_date}",
+            f"Monthly Summary for {summary.date.strftime(DATE_FORMAT)}",
             html,
         )

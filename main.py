@@ -9,6 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# Lambda helper functions
 def read_s3_file(bucket, key):
     s3 = boto3.client("s3")
     try:
@@ -26,10 +27,21 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
     try:
         response = ses.send_email(
             Source=source,
-            Destination={"ToAddresses": to_addresses},
+            Destination={
+                "ToAddresses": to_addresses
+            },
             Message={
-                "Subject": {"Data": subject},
-                "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
+                "Subject": {
+                    "Data": subject
+                },
+                "Body": {
+                    "Html": {
+                        "Data": html_body
+                    }, 
+                    "Text": {
+                        "Data": text_body
+                    }
+                },
             },
         )
         return response
@@ -38,6 +50,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         raise
 
 
+# core functions
 def load_config(config_file="config.json"):
     """Load configuration from a JSON file."""
     try:
@@ -53,12 +66,11 @@ def process_file(file_path):
     file_content = read_s3_file(bucket, key)
     config = load_config()
     summary = SpreadsheetSummary(config, date.today(), file_content)
-    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(
-        summary
-    )
+    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(summary)
     send_email(source, to_addresses, subject, html_body)
 
 
+# called as lambda.main in AWS Lambda function
 def lambda_handler(event, context):
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]

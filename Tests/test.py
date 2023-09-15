@@ -5,6 +5,43 @@ from botocore import exceptions
 from moto import mock_s3, mock_ses
 
 
+class TestParse(unittest.TestCase):
+    def setUp(self):
+        with open("Tests/garbage.csv", "r") as f:
+            self.bad_spreadsheet_content = f.read()
+
+    def test_parse_bad_spreadsheet(self):
+        result = SpreadsheetParser.parse(self.bad_spreadsheet_content)
+        self.assertEqual(result, [])
+
+
+class TestAddTransactsFromSP(unittest.TestCase):
+    def setUp(self):
+        with open("Tests/garbage.csv", "r") as f:
+            self.bad_spreadsheet_content = f.read()
+        self.summary = Summary(load_config(), date.today())
+
+    def test_add_transactions_from_spreadsheet_empty(self):
+        self.summary.add_transactions_from_spreadsheet(self.bad_spreadsheet_content)
+        transactions = sum([p.transactions for p in self.summary.people], [])
+        self.assertEqual(transactions, [])
+
+
+class TestCalculateExpenses(unittest.TestCase):
+    def setUp(self):
+        with open("Tests/garbage.csv", "r") as f:
+            self.bad_spreadsheet_content = f.read()
+        self.summary = Summary(load_config(), date.today())
+
+    def test_calculate_expenses_with_no_trans(self):
+        expenses = self.summary.people[0].calculate_expenses()
+        self.assertEqual(expenses, 0)
+
+    def test_calculate_expenses_with_no_trans_cat(self):
+        expenses = self.summary.people[0].calculate_expenses(Category.DINING)
+        self.assertEqual(expenses, 0)
+
+
 class TestReadS3File(unittest.TestCase):
     def setUp(self):
         self.bucket = "test-bucket"
@@ -41,43 +78,8 @@ class TestSendEmail(unittest.TestCase):
 
         source = "jasonroc19@gmail.com"
         to_addresses = ["jasonroc19@gmail.com", "vcbarr1@gmail.com"]
-        subject = "Monthly Summary for 09/23"
-        html_body = """<html><head></head><body><h1>Summary for 09/23:</h1>
-<table border='1'>
-<thead>
-<tr>
-<th>Dining & Drinks</th>
-<th>Groceries</th>
-<th>Entertainment & Rec.</th>
-<th><strong>Total</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Rocco</td>
-<td>148.58</td>
-<td>0</td>
-<td>0</td>
-<td>148.58</td>
-</tr>
-<tr>
-<td>Tori</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-</tr>
-<tr>
-<td>Diff (Rocco - Tori)</td>
-<td>148.58</td>
-<td>0</td>
-<td>0</td>
-<td>148.58</td>
-</tr>
-</tbody>
-</table>
-</body>
-</html>"""
+        subject = "Test"
+        html_body = "<p>Test email</p>"
 
         # Call the function
         response = send_email(source, to_addresses, subject, html_body)

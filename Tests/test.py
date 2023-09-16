@@ -31,21 +31,16 @@ class TestInitializePeople(unittest.TestCase):
             "People": [
                 {
                     "Nme": "George",
-                    "Accounts": [
-                        1234,
-                        4321
-                    ],
-                    "Email": "boygeorge@gmail.com"
+                    "Accounts": [1234, 4321],
+                    "Email": "boygeorge@gmail.com",
                 },
                 {
                     "Name": "Tootie",
-                    "Accounts": [
-                        1313
-                    ],
-                    "Email": "tuttifruity@hotmail.com"
-                }
+                    "Accounts": [1313],
+                    "Email": "tuttifruity@hotmail.com",
+                },
             ],
-            "Owner": "bebas@gmail.com"
+            "Owner": "bebas@gmail.com",
         }
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_dict_keys)
@@ -55,21 +50,16 @@ class TestInitializePeople(unittest.TestCase):
             "People": [
                 {
                     "Name": "George",
-                    "Accounts": [
-                        "1234",
-                        "4321"
-                    ],
-                    "Email": "boygeorge@gmail.com"
+                    "Accounts": ["1234", "4321"],
+                    "Email": "boygeorge@gmail.com",
                 },
                 {
                     "Name": "Tootie",
-                    "Accounts": [
-                        1313
-                    ],
-                    "Email": "tuttifruity@hotmail.com"
-                }
+                    "Accounts": [1313],
+                    "Email": "tuttifruity@hotmail.com",
+                },
             ],
-            "Owner": "bebas@gmail.com"
+            "Owner": "bebas@gmail.com",
         }
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), bad_dict_values)
@@ -95,10 +85,10 @@ class TestParse(unittest.TestCase):
                 Category.ENTERTAINMENT,
             ),
             Transaction(
-                date(2023, 9, 4), 
-                "TIKICAT BAR", 
-                1234, 
-                12.66, 
+                date(2023, 9, 4),
+                "TIKICAT BAR",
+                1234,
+                12.66,
                 Category.DINING,
             ),
             Transaction(
@@ -107,7 +97,7 @@ class TestParse(unittest.TestCase):
                 1313,
                 47.71,
                 Category.GROCERIES,
-            )
+            ),
         ]
         flag = True
         for i in range(len(test_result)):
@@ -129,10 +119,23 @@ class TestCalculateExpenses(unittest.TestCase):
         self.assertEqual(person.calculate_expenses(), 0)
 
     def test_calculate_expenses_trans(self):
-        person = Person("Tootie", "tuttifruity@hotmail.com", [1313, 2121], 
-                        [Transaction(date(2023, 8, 31), "MADCATS DANCE", 1313, 17, Category.ENTERTAINMENT),
-                        Transaction(date(2023, 9, 4), "MADCATS DANCE", 1313, 12.66, Category.ENTERTAINMENT)]
-                )
+        person = Person(
+            "Tootie",
+            "tuttifruity@hotmail.com",
+            [1313, 2121],
+            [
+                Transaction(
+                    date(2023, 8, 31), "MADCATS DANCE", 1313, 17, Category.ENTERTAINMENT
+                ),
+                Transaction(
+                    date(2023, 9, 4),
+                    "MADCATS DANCE",
+                    1313,
+                    12.66,
+                    Category.ENTERTAINMENT,
+                ),
+            ],
+        )
         self.assertEqual(person.calculate_expenses(Category.ENTERTAINMENT), 29.66)
 
 

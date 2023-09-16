@@ -51,7 +51,9 @@ class Person:
                 raise TypeError(f"email should be a string, got {type(email).__name__}")
             if not all(isinstance(num, int) for num in account_numbers):
                 raise TypeError("account_numbers should be a list of integers")
-            if transactions and not all(isinstance(t, Transaction) for t in transactions):
+            if transactions and not all(
+                isinstance(t, Transaction) for t in transactions
+            ):
                 raise TypeError("transactions should be a list of Transaction objects")
 
             self.name = name
@@ -88,7 +90,7 @@ class Summary:
             self.people = self.initialize_people(people_config)
         except (KeyError, TypeError):
             logger.error("Invalid or missing 'People' in configuration.")
-            raise 
+            raise
 
     def initialize_people(self, people_config):
         try:
@@ -122,7 +124,9 @@ class Summary:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_2_person_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
+        return person1.calculate_expenses(category) - person2.calculate_expenses(
+            category
+        )
 
 
 class SpreadsheetSummary(Summary):

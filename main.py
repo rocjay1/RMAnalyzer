@@ -27,25 +27,14 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
     try:
         response = ses.send_email(
             Source=source,
-            Destination={
-                "ToAddresses": to_addresses
-            },
+            Destination={"ToAddresses": to_addresses},
             Message={
-                "Subject": {
-                    "Data": subject
-                },
-                "Body": {
-                    "Html": {
-                        "Data": html_body
-                    }, 
-                    "Text": {
-                        "Data": text_body
-                    }
-                },
+                "Subject": {"Data": subject},
+                "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
             },
         )
         return response
-    except (exceptions.ClientError) as e:
+    except exceptions.ClientError as e:
         logger.error(f"Error sending email: {str(e)}")
         raise
 
@@ -55,7 +44,9 @@ def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary = SpreadsheetSummary(date.today(), file_content)
-    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(summary)
+    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(
+        summary
+    )
     send_email(source, to_addresses, subject, html_body)
 
 

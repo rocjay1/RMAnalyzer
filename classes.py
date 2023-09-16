@@ -2,6 +2,7 @@ import csv
 from datetime import datetime
 from enum import Enum
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,16 @@ MONEY_FORMAT = "{0:.2f}"
 # helpers
 def money_format_helper(num):
     return MONEY_FORMAT.format(num)
+
+
+def load_config_helper(config_file="config.json"):
+    """Load configuration from a JSON file."""
+    try:
+        with open(config_file, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(str(e))
+        raise
 
 
 # core classes
@@ -33,10 +44,23 @@ class Transaction:
 
 class Person:
     def __init__(self, name, email, account_numbers, transactions=None):
-        self.name = name
-        self.email = email
-        self.account_numbers = account_numbers
-        self.transactions = transactions or []
+        try:
+            if not isinstance(name, str):
+                raise TypeError(f"name should be a string, got {type(name).__name__}")
+            if not isinstance(email, str):
+                raise TypeError(f"email should be a string, got {type(email).__name__}")
+            if not all(isinstance(num, int) for num in account_numbers):
+                raise TypeError("account_numbers should be a list of integers")
+            if transactions and not all(isinstance(t, Transaction) for t in transactions):
+                raise TypeError("transactions should be a list of Transaction objects")
+
+            self.name = name
+            self.email = email
+            self.account_numbers = account_numbers
+            self.transactions = transactions or []
+        except TypeError as e:
+            logger.error(f"Invalid person data: {str(e)}")
+            raise
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
@@ -48,13 +72,38 @@ class Person:
 
 
 class Summary:
-    def __init__(self, config, date):
+    def __init__(self, date, config=None):
+        if not config:
+            config = load_config_helper()
         self.date = date
-        self.owner = config["Owner"]
-        self.people = self.initialize_people(config["People"])
+
+        try:
+            self.owner = config["Owner"]
+        except (KeyError, TypeError):
+            logger.error("Invalid or missing 'Owner' in configuration.")
+            raise
+
+        try:
+            people_config = config["People"]
+            self.people = self.initialize_people(people_config)
+        except (KeyError, TypeError):
+            logger.error("Invalid or missing 'People' in configuration.")
+            raise 
 
     def initialize_people(self, people_config):
-        return [Person(p["Name"], p["Email"], p["Accounts"], []) for p in people_config]
+        try:
+            return [
+                Person(
+                    p["Name"],
+                    p["Email"],
+                    p["Accounts"],
+                    [],
+                )
+                for p in people_config
+            ]
+        except (TypeError, KeyError) as e:
+            logger.error(f"Invalid people configuration: {str(e)}")
+            raise
 
     def add_transactions_from_spreadsheet(self, spreadsheet_content):
         parsed_transactions = SpreadsheetParser.parse(spreadsheet_content)
@@ -73,12 +122,14 @@ class Summary:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_expenses_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
+        return person1.calculate_expenses(category) - person2.calculate_expenses(
+            category
+        )
 
 
 class SpreadsheetSummary(Summary):
-    def __init__(self, config, date, spreadsheet_content):
-        super().__init__(config, date)
+    def __init__(self, date, spreadsheet_content, config=None):
+        super().__init__(date, config)
         super().add_transactions_from_spreadsheet(spreadsheet_content)
 
 

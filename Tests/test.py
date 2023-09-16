@@ -1,25 +1,116 @@
 from main import *
+from classes import *
 import unittest
 import boto3
 from botocore import exceptions
 from moto import mock_s3, mock_ses
 
 
+class TestSummaryConstructor(unittest.TestCase):
+    def test_summary_constructor_no_config(self):
+        summary = Summary(date.today())
+        self.assertEqual(summary.date, date.today())
+        self.assertEqual(len(summary.people), 2)
+        self.assertEqual(summary.people[0].name, "Rocco")
+        self.assertEqual(summary.people[1].name, "Tori")
+
+    def test_summary_constructor_with_bad_dict(self):
+        bad_dict = ["bad", "dict"]
+        with self.assertRaises(TypeError):
+            summary = Summary(date.today(), bad_dict)
+
+    def test_summary_constructor_with_bad_dict_keys(self):
+        bad_dict = {"bad": "dict"}
+        with self.assertRaises(KeyError):
+            summary = Summary(date.today(), bad_dict)
+
+
+class TestInitializePeople(unittest.TestCase):
+    def test_initialize_bad_dict_keys(self):
+        bad_dict_keys = {
+            "People": [
+                {
+                    "Nme": "Rocco",
+                    "Accounts": [1122, 3550, 3701],
+                    "Email": "jasonroc19@gmail.com",
+                },
+                {
+                    "Name": "Tori",
+                    "Accounts": [2972, 2681, 4985],
+                    "Email": "vcbarr1@gmail.com",
+                },
+            ],
+            "Owner": "jasonroc19@gmail.com",
+        }
+        with self.assertRaises(KeyError):
+            summary = Summary(date.today(), bad_dict_keys)
+
+    def test_initialize_bad_dict_values(self):
+        bad_dict_values = {
+            "People": [
+                {
+                    "Name": "Rocco",
+                    "Accounts": ["1122", "3550", "3701"],
+                    "Email": "jasonroc19@gmail.com",
+                },
+                {"Name": "Tori", "Accounts": [2972, 2681, 4985], "Email": 4},
+            ],
+            "Owner": "jasonroc19@gmail.com",
+        }
+        with self.assertRaises(TypeError):
+            summary = Summary(date.today(), bad_dict_values)
+
+
 class TestParse(unittest.TestCase):
-    def setUp(self):
-        with open("Tests/garbage.csv", "r") as f:
-            self.bad_spreadsheet_content = f.read()
-
     def test_parse_bad_spreadsheet(self):
-        result = SpreadsheetParser.parse(self.bad_spreadsheet_content)
-        self.assertEqual(result, [])
+        with open("Tests/garbage.csv", "r") as f:
+            bad_spreadsheet_content = f.read()
+        test_result = SpreadsheetParser.parse(bad_spreadsheet_content)
+        self.assertEqual(test_result, [])
+
+    def test_parse_good_spreadsheet(self):
+        with open("Tests/valid.csv", "r") as f:
+            good_spreadsheet_content = f.read()
+        test_result = SpreadsheetParser.parse(good_spreadsheet_content)
+        correct_result = [
+            Transaction(
+                date(2023, 9, 14), "BAMBU MADISON-SF", 1122, 12.66, Category.DINING
+            ),
+            Transaction(
+                date(2023, 9, 17),
+                "METCALFE MARKET HIL",
+                2681,
+                47.71,
+                Category.GROCERIES,
+            ),
+            Transaction(
+                date(2023, 10, 17),
+                "TOOTIES MARKET",
+                2681,
+                169.69,
+                Category.GROCERIES,
+            ),
+        ]
+        flag = True
+        for i in range(len(test_result)):
+            if test_result[i].date != correct_result[i].date:
+                flag = False
+            if test_result[i].name != correct_result[i].name:
+                flag = False
+            if test_result[i].account_number != correct_result[i].account_number:
+                flag = False
+            if test_result[i].amount != correct_result[i].amount:
+                flag = False
+            if test_result[i].category != correct_result[i].category:
+                flag = False
+        self.assertEqual(flag, True)
 
 
-class TestAddTransactsFromSP(unittest.TestCase):
+class TestAddTransactsFromSS(unittest.TestCase):
     def setUp(self):
         with open("Tests/garbage.csv", "r") as f:
             self.bad_spreadsheet_content = f.read()
-        self.summary = Summary(load_config(), date.today())
+        self.summary = Summary(date.today())
 
     def test_add_transactions_from_spreadsheet_empty(self):
         self.summary.add_transactions_from_spreadsheet(self.bad_spreadsheet_content)
@@ -31,7 +122,7 @@ class TestCalculateExpenses(unittest.TestCase):
     def setUp(self):
         with open("Tests/garbage.csv", "r") as f:
             self.bad_spreadsheet_content = f.read()
-        self.summary = Summary(load_config(), date.today())
+        self.summary = Summary(date.today())
 
     def test_calculate_expenses_with_no_trans(self):
         expenses = self.summary.people[0].calculate_expenses()

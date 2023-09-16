@@ -50,22 +50,11 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         raise
 
 
-# core functions
-def load_config(config_file="config.json"):
-    """Load configuration from a JSON file."""
-    try:
-        with open(config_file, "r") as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logger.error(str(e))
-        raise
-
-
+# main function
 def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
-    config = load_config()
-    summary = SpreadsheetSummary(config, date.today(), file_content)
+    summary = SpreadsheetSummary(date.today(), file_content)
     source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(summary)
     send_email(source, to_addresses, subject, html_body)
 

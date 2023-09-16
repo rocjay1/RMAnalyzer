@@ -121,10 +121,8 @@ class Summary:
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
-    def calculate_expenses_difference(self, person1, person2, category=None):
-        return person1.calculate_expenses(category) - person2.calculate_expenses(
-            category
-        )
+    def calculate_2_person_difference(self, person1, person2, category=None):
+        return person1.calculate_expenses(category) - person2.calculate_expenses(category)
 
 
 class SpreadsheetSummary(Summary):
@@ -203,8 +201,8 @@ class EmailGenerator:
             html += "<tr>\n"
             html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
             for category in Category:
-                html += f"<td>{money_format_helper(summary.calculate_expenses_difference(person1, person2, category))}</td>\n"
-            html += f"<td>{money_format_helper(summary.calculate_expenses_difference(person1, person2))}</td>\n"
+                html += f"<td>{money_format_helper(summary.calculate_2_person_difference(person1, person2, category))}</td>\n"
+            html += f"<td>{money_format_helper(summary.calculate_2_person_difference(person1, person2))}</td>\n"
             html += "</tr>\n"
 
         html += "</tbody>\n</table>\n</body>\n</html>"

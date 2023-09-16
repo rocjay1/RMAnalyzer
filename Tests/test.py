@@ -7,19 +7,19 @@ from moto import mock_s3, mock_ses
 
 
 class TestSummaryConstructor(unittest.TestCase):
-    def test_summary_constructor_no_config(self):
-        summary = Summary(date.today())
+    def test_summary_constructor_from_config(self):
+        summary = Summary(date.today(), config=load_config_helper("Tests/config.json"))
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
-        self.assertEqual(summary.people[0].name, "Rocco")
-        self.assertEqual(summary.people[1].name, "Tori")
+        self.assertEqual(summary.people[0].name, "George")
+        self.assertEqual(summary.people[1].name, "Tootie")
 
-    def test_summary_constructor_with_bad_dict(self):
+    def test_summary_constructor_bad_dict(self):
         bad_dict = ["bad", "dict"]
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), bad_dict)
 
-    def test_summary_constructor_with_bad_dict_keys(self):
+    def test_summary_constructor_bad_dict_keys(self):
         bad_dict = {"bad": "dict"}
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_dict)
@@ -30,17 +30,22 @@ class TestInitializePeople(unittest.TestCase):
         bad_dict_keys = {
             "People": [
                 {
-                    "Nme": "Rocco",
-                    "Accounts": [1122, 3550, 3701],
-                    "Email": "jasonroc19@gmail.com",
+                    "Nme": "George",
+                    "Accounts": [
+                        1234,
+                        4321
+                    ],
+                    "Email": "boygeorge@gmail.com"
                 },
                 {
-                    "Name": "Tori",
-                    "Accounts": [2972, 2681, 4985],
-                    "Email": "vcbarr1@gmail.com",
-                },
+                    "Name": "Tootie",
+                    "Accounts": [
+                        1313
+                    ],
+                    "Email": "tuttifruity@hotmail.com"
+                }
             ],
-            "Owner": "jasonroc19@gmail.com",
+            "Owner": "bebas@gmail.com"
         }
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_dict_keys)
@@ -49,13 +54,22 @@ class TestInitializePeople(unittest.TestCase):
         bad_dict_values = {
             "People": [
                 {
-                    "Name": "Rocco",
-                    "Accounts": ["1122", "3550", "3701"],
-                    "Email": "jasonroc19@gmail.com",
+                    "Name": "George",
+                    "Accounts": [
+                        "1234",
+                        "4321"
+                    ],
+                    "Email": "boygeorge@gmail.com"
                 },
-                {"Name": "Tori", "Accounts": [2972, 2681, 4985], "Email": 4},
+                {
+                    "Name": "Tootie",
+                    "Accounts": [
+                        1313
+                    ],
+                    "Email": "tuttifruity@hotmail.com"
+                }
             ],
-            "Owner": "jasonroc19@gmail.com",
+            "Owner": "bebas@gmail.com"
         }
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), bad_dict_values)
@@ -74,63 +88,52 @@ class TestParse(unittest.TestCase):
         test_result = SpreadsheetParser.parse(good_spreadsheet_content)
         correct_result = [
             Transaction(
-                date(2023, 9, 14), "BAMBU MADISON-SF", 1122, 12.66, Category.DINING
+                date(2023, 8, 31),
+                "MADCATS DANCE",
+                1313,
+                17,
+                Category.ENTERTAINMENT,
             ),
             Transaction(
-                date(2023, 9, 17),
-                "METCALFE MARKET HIL",
-                2681,
+                date(2023, 9, 4), 
+                "TIKICAT BAR", 
+                1234, 
+                12.66, 
+                Category.DINING,
+            ),
+            Transaction(
+                date(2023, 9, 12),
+                "FISH MARKET",
+                1313,
                 47.71,
                 Category.GROCERIES,
-            ),
-            Transaction(
-                date(2023, 10, 17),
-                "TOOTIES MARKET",
-                2681,
-                169.69,
-                Category.GROCERIES,
-            ),
+            )
         ]
         flag = True
         for i in range(len(test_result)):
-            if test_result[i].date != correct_result[i].date:
+            if (
+                test_result[i].date != correct_result[i].date
+                or test_result[i].name != correct_result[i].name
+                or test_result[i].account_number != correct_result[i].account_number
+                or test_result[i].amount != correct_result[i].amount
+                or test_result[i].category != correct_result[i].category
+            ):
                 flag = False
-            if test_result[i].name != correct_result[i].name:
-                flag = False
-            if test_result[i].account_number != correct_result[i].account_number:
-                flag = False
-            if test_result[i].amount != correct_result[i].amount:
-                flag = False
-            if test_result[i].category != correct_result[i].category:
-                flag = False
+                break
         self.assertEqual(flag, True)
 
 
-class TestAddTransactsFromSS(unittest.TestCase):
-    def setUp(self):
-        with open("Tests/garbage.csv", "r") as f:
-            self.bad_spreadsheet_content = f.read()
-        self.summary = Summary(date.today())
-
-    def test_add_transactions_from_spreadsheet_empty(self):
-        self.summary.add_transactions_from_spreadsheet(self.bad_spreadsheet_content)
-        transactions = sum([p.transactions for p in self.summary.people], [])
-        self.assertEqual(transactions, [])
-
-
 class TestCalculateExpenses(unittest.TestCase):
-    def setUp(self):
-        with open("Tests/garbage.csv", "r") as f:
-            self.bad_spreadsheet_content = f.read()
-        self.summary = Summary(date.today())
+    def test_calculate_expenses_no_trans(self):
+        person = Person("George", "boygeorge@gmail.com", [1234, 4321])
+        self.assertEqual(person.calculate_expenses(), 0)
 
-    def test_calculate_expenses_with_no_trans(self):
-        expenses = self.summary.people[0].calculate_expenses()
-        self.assertEqual(expenses, 0)
-
-    def test_calculate_expenses_with_no_trans_cat(self):
-        expenses = self.summary.people[0].calculate_expenses(Category.DINING)
-        self.assertEqual(expenses, 0)
+    def test_calculate_expenses_trans(self):
+        person = Person("Tootie", "tuttifruity@hotmail.com", [1313, 2121], 
+                        [Transaction(date(2023, 8, 31), "MADCATS DANCE", 1313, 17, Category.ENTERTAINMENT),
+                        Transaction(date(2023, 9, 4), "MADCATS DANCE", 1313, 12.66, Category.ENTERTAINMENT)]
+                )
+        self.assertEqual(person.calculate_expenses(Category.ENTERTAINMENT), 29.66)
 
 
 class TestReadS3File(unittest.TestCase):

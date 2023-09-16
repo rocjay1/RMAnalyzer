@@ -45,7 +45,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
             },
         )
         return response
-    except exceptions.ClientError as e:
+    except (exceptions.ClientError) as e:
         logger.error(f"Error sending email: {str(e)}")
         raise
 

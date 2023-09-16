@@ -3,7 +3,7 @@ from classes import *
 import unittest
 import boto3
 from botocore import exceptions
-from moto import mock_s3, mock_ses
+from moto import mock_s3, mock_ses, mock_events
 
 
 class TestSummaryConstructor(unittest.TestCase):
@@ -147,23 +147,24 @@ class TestReadS3File(unittest.TestCase):
 
     @mock_s3
     def test_read_s3_file_success(self):
-        # Create the S3 client and the mock resources
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=self.bucket)
         s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
-
-        # Call the function and check the result
         result = read_s3_file(self.bucket, self.key)
         self.assertEqual(result, self.data)
 
     @mock_s3
-    def test_read_s3_file_failure(self):
+    def test_read_s3_file_key_failure(self):
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=self.bucket)
-
-        # Test for non-existing key
         with self.assertRaises(exceptions.ClientError):
             read_s3_file(self.bucket, "nonexistent-key")
+
+    @mock_s3
+    def test_read_s3_file_bucket_failure(self):
+        s3 = boto3.client("s3")
+        with self.assertRaises(exceptions.ClientError):
+            read_s3_file("nonexistent-bucket", self.key)
 
 
 class TestSendEmail(unittest.TestCase):
@@ -171,17 +172,48 @@ class TestSendEmail(unittest.TestCase):
     def test_send_email(self):
         ses = boto3.client("ses", region_name="us-east-1")
         # Moto's mock SES requires a verified identity (email or domain)
-        ses.verify_email_identity(EmailAddress="jasonroc19@gmail.com")
-
-        source = "jasonroc19@gmail.com"
-        to_addresses = ["jasonroc19@gmail.com", "vcbarr1@gmail.com"]
+        ses.verify_email_identity(EmailAddress="bebas@gmail.com")
+        source = "bebas@gmail.com"
+        to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
         subject = "Test"
-        html_body = "<p>Test email</p>"
-
-        # Call the function
+        html_body = "<p>Test</p>"
         response = send_email(source, to_addresses, subject, html_body)
-
         self.assertIn("MessageId", response)
+
+    @mock_ses
+    def test_send_email_bad_source(self):
+        ses = boto3.client("ses", region_name="us-east-1")
+        bad_source = "bebas@gmail.com"
+        to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
+        subject = "Test"
+        html_body = "<p>Test</p>"
+        with self.assertRaises(exceptions.ClientError):
+            send_email(bad_source, to_addresses, subject, html_body)
+
+
+class TestGenerateSummaryEmail(unittest.TestCase):
+    def test_generate_summary_email(self):
+        with open("Tests/valid.csv", "r") as f:
+            spreadsheet_content = f.read()
+        summary = SpreadsheetSummary(
+            date.today(),
+            spreadsheet_content,
+            config=load_config_helper("Tests/config.json"),
+        )
+        (
+            source,
+            to_addresses,
+            subject,
+            html_body,
+        ) = EmailGenerator.generate_summary_email(summary)
+        correct_source = "bebas@gmail.com"
+        correct_to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
+        correct_subject = f"Monthly Summary for {summary.date.strftime(DATE_FORMAT)}"
+        correct_html_body = "<html>\n        <head>\n            <style>\n                table {\n                    border-collapse: collapse;\n                    width: 100%;\n                }\n                \n                th, td {\n                    border: 1px solid black;\n                    padding: 8px 12px;  /* Add padding to table cells */\n                    text-align: left;\n                }\n\n                th {\n                    background-color: #f2f2f2;  /* A light background color for headers */\n                }\n            </style>\n        </head>\n        <body><table border='1'>\n<thead>\n<tr>\n<th></th>\n<th>Dining & Drinks</th>\n<th>Groceries</th>\n<th>Entertainment & Rec.</th>\n<th>Total</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>George</td>\n<td>12.66</td>\n<td>0.00</td>\n<td>0.00</td>\n<td>12.66</td>\n</tr>\n<tr>\n<td>Tootie</td>\n<td>0.00</td>\n<td>47.71</td>\n<td>0.00</td>\n<td>47.71</td>\n</tr>\n<tr>\n<td>Difference (George - Tootie)</td>\n<td>12.66</td>\n<td>-47.71</td>\n<td>0.00</td>\n<td>-35.05</td>\n</tr>\n</tbody>\n</table>\n</body>\n</html>"
+        self.assertEqual(
+            (source, to_addresses, subject, html_body),
+            (correct_source, correct_to_addresses, correct_subject, correct_html_body),
+        )
 
 
 def main():

@@ -1,12 +1,6 @@
 # Create a deployment script to upload deployment package to Lambda fuction
 
 
-# Configure logging
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 # Dependencies located at /Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages,
 # need to be zipped as in (https://docs.aws.amazon.com/lambda/latest/dg/python-package.html):
 #     ~/my_function$ cd my_virtual_env/lib/python3.11/site-packages
@@ -103,11 +97,9 @@ def update_lambda_function():
     stdout, stderr = process.communicate()
     if process.returncode != 0:
         error_message = f"{stderr.decode('utf-8')}: run 'aws sso login --profile my-dev-profile' and try again."
-        logger.error(error_message)
         print(error_message)
     else:
         success_message = stdout.decode("utf-8")
-        logger.info(success_message)
         print(success_message)
 
 

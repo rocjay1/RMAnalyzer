@@ -1,13 +1,23 @@
+# Deployment script to update AWS Lambda function
+# Usage: python3 Repos/RMAnalyzer/Deployment/deployment_script.py -z -d
+
+
 import os
 import zipfile
 import subprocess
 import argparse
 
 
-# Change these variables to match your environment
+# Path to the root of the project
 PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer"
+# Path to the zip file to be uploaded to AWS Lambda
 DEPL_ZIP = "/Users/roccodavino/Repos/RMAnalyzer/Deployment/RMAnalyzer.zip"
+# Main files to be zipped
+PKG_FILES = ["main.py", "classes.py", "config.json"]
+# Path to the dependencies directory
 DEPS_DIR = "/Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages"
+# Name of the Lambda function
+LAMBDA_NAME = "RMAnalyzer"
 
 
 def zip_dependencies():
@@ -30,9 +40,8 @@ def zip_main():
     )  # Change "w" to "a" to append to existing zip file
     print("Zipping main files...")
     with zipfile.ZipFile(DEPL_ZIP, mode) as zipObj:
-        zipObj.write("main.py")
-        zipObj.write("classes.py")
-        zipObj.write("config.json")
+        for file in PKG_FILES:
+            zipObj.write(file)
     os.chdir(cwd)
     print("Done.")
 
@@ -45,11 +54,11 @@ def update_lambda_function():
             "lambda",
             "update-function-code",
             "--function-name",
-            "RMAnalyzer",
+            LAMBDA_NAME,
             "--zip-file",
             f"fileb://{DEPL_ZIP}",
             "--profile",
-            "my-dev-profile",
+            "my-dev-profile",  # Change this to the name of your AWS profile if needed
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -57,7 +66,7 @@ def update_lambda_function():
     stdout, stderr = process.communicate()
     if process.returncode != 0:
         print(
-            f"{stderr.decode('utf-8')}: run 'aws sso login --profile my-dev-profile' and try again."
+            f"{stderr.decode('utf-8')}: may need to run 'aws sso login --profile my-dev-profile'."
         )
     else:
         print(stdout.decode("utf-8"))
@@ -79,7 +88,6 @@ def main():
         dest="zip_deps",
         help="Zip dependencies.",
     )
-
     global args
     args = parser.parse_args()
     if args.zip_deps:

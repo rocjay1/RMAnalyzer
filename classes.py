@@ -6,6 +6,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
+
 # constants
 DATE_FORMAT = "%Y-%m-%d"
 MONEY_FORMAT = "{0:.2f}"

@@ -4,40 +4,17 @@ import subprocess
 import argparse
 
 
-# Create a deployment script to upload deployment package to Lambda fuction
-#
-# Dependencies located at /Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages,
-# need to be zipped as in (https://docs.aws.amazon.com/lambda/latest/dg/python-package.html):
-#     ~/my_function$ cd my_virtual_env/lib/python3.11/site-packages
-#     ~/my_function/my_virtual_env/lib/python3.11/site-packages$ zip -r ../../../../my_deployment_package.zip
-# Include main.py, classes.py, config.json in zip root as well, for example:
-#     ~/my_function/my_virtual_env/lib/python3.11/site-packages$ cd ../../../../
-#     ~/my_function$ zip my_deployment_package.zip lambda_function.py
-# Use Python zipfile module to create and manage the zip file
-#
-# Update AWS Lambda function using the following command:
-#     aws lambda update-function-code --function-name RMAnalyzer --zip-file fileb://RMAnalyzer.zip --profile my-dev-profile
-# To handle the case where token has expired, run the following:
-#     aws sso login --profile my-dev-profile
-#
-# Run this script from the command line in RMAnalyzer directory using:
-#     python3 Depdeployment_script.py -z -d
-
-
-# GLOBALS
+# Change these variables to match your environment
 PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer"
 DEPL_ZIP = "/Users/roccodavino/Repos/RMAnalyzer/Deployment/RMAnalyzer.zip"
 DEPS_DIR = "/Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages"
 
 
-# FUNCTIONS
-# Zip dependencies to RMAnalyzer.zip
 def zip_dependencies():
     print("Zipping dependencies...")
     cwd = os.getcwd()
     os.chdir(DEPS_DIR)
     with zipfile.ZipFile(DEPL_ZIP, "w") as zipObj:
-        # Add all files in directory to zip file
         for root, dirs, files in os.walk("."):
             for file in files:
                 zipObj.write(os.path.join(root, file))
@@ -45,7 +22,6 @@ def zip_dependencies():
     print("Done.")
 
 
-# Zip main files to Deployment/RMAnalyzer.zip
 def zip_main():
     cwd = os.getcwd()
     os.chdir(PKG_DIR)
@@ -61,7 +37,6 @@ def zip_main():
     print("Done.")
 
 
-# Execute AWS Lambda function update from the command line
 def update_lambda_function():
     print("Updating Lambda function...")
     process = subprocess.Popen(
@@ -88,28 +63,32 @@ def update_lambda_function():
         print(stdout.decode("utf-8"))
 
 
-# MAIN
-# Parse arguments from command line using argparse
-parser = argparse.ArgumentParser(description="Update Lambda function.")
-parser.add_argument(
-    "-z",
-    "--zip",
-    action="store_true",
-    dest="zip_main",
-    help="Zip main files.",
-)
-parser.add_argument(
-    "-d",
-    "--deps",
-    action="store_true",
-    dest="zip_deps",
-    help="Zip dependencies.",
-)
-args = parser.parse_args()
+def main():
+    parser = argparse.ArgumentParser(description="Update Lambda function.")
+    parser.add_argument(
+        "-z",
+        "--zip",
+        action="store_true",
+        dest="zip_main",
+        help="Zip main files.",
+    )
+    parser.add_argument(
+        "-d",
+        "--deps",
+        action="store_true",
+        dest="zip_deps",
+        help="Zip dependencies.",
+    )
 
-if args.zip_deps:
-    zip_dependencies()
-if args.zip_main:
-    zip_main()
+    global args
+    args = parser.parse_args()
+    if args.zip_deps:
+        zip_dependencies()
+    if args.zip_main:
+        zip_main()
 
-update_lambda_function()
+    update_lambda_function()
+
+
+if __name__ == "__main__":
+    main()

@@ -17,6 +17,7 @@ import zipfile
 # Zip dependencies at /Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages
 # to RMAnalyzer.zip
 def zip_dependencies():
+    print("Zipping dependencies...")
     # Get current working directory
     cwd = os.getcwd()
     # Change directory to dependencies
@@ -35,15 +36,18 @@ def zip_dependencies():
     zipf.close()
     # Change directory back to original
     os.chdir(cwd)
+    print("Done.")
 
 
 # Zip main.py, classes.py, config.json files to Deployment/RMAnalyzer.zip
 def zip_main():
+    print("Zipping main.py, classes.py, config.json...")
     with zipfile.ZipFile("Deployment/RMAnalyzer.zip", "a") as zipObj:
         # Add multiple files to the zip
         zipObj.write("main.py")
         zipObj.write("classes.py")
         zipObj.write("config.json")
+    print("Done.")
 
 
 def inspect_zip_contents(zip_file_path, temp_extract_dir):
@@ -79,6 +83,7 @@ import subprocess
 # Execute aws lambda update-function-code --function-name RMAnalyzer --zip-file fileb://RMAnalyzer.zip --profile my-dev-profile
 # from the command line to update the Lambda function
 def update_lambda_function():
+    print("Updating Lambda function...")
     process = subprocess.Popen(
         [
             "aws",
@@ -101,6 +106,7 @@ def update_lambda_function():
     else:
         success_message = stdout.decode("utf-8")
         print(success_message)
+    print("Done.")
 
 
 update_lambda_function()

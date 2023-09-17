@@ -40,9 +40,10 @@ def zip_dependencies():
 
 
 # Zip main.py, classes.py, config.json files to Deployment/RMAnalyzer.zip
+# Change "w" to "a" to append to existing zip file
 def zip_main():
     print("Zipping main.py, classes.py, config.json...")
-    with zipfile.ZipFile("Deployment/RMAnalyzer.zip", "a") as zipObj:
+    with zipfile.ZipFile("Deployment/RMAnalyzer.zip", "w") as zipObj:
         # Add multiple files to the zip
         zipObj.write("main.py")
         zipObj.write("classes.py")
@@ -67,7 +68,8 @@ def inspect_zip_contents(zip_file_path, temp_extract_dir):
             )  # Print relative path
 
 
-zip_dependencies()
+# If venv dependencies are needed, use:
+# zip_dependencies()
 zip_main()
 # For testing, use:
 # inspect_zip_contents('Deployment/RMAnalyzer.zip', 'Deployment/Temp')
@@ -106,7 +108,6 @@ def update_lambda_function():
     else:
         success_message = stdout.decode("utf-8")
         print(success_message)
-    print("Done.")
 
 
 update_lambda_function()

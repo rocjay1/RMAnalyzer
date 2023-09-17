@@ -1,6 +1,11 @@
+import os
+import zipfile
+import subprocess
+import argparse
+
+
 # Create a deployment script to upload deployment package to Lambda fuction
-
-
+#
 # Dependencies located at /Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages,
 # need to be zipped as in (https://docs.aws.amazon.com/lambda/latest/dg/python-package.html):
 #     ~/my_function$ cd my_virtual_env/lib/python3.11/site-packages
@@ -8,82 +13,55 @@
 # Include main.py, classes.py, config.json in zip root as well, for example:
 #     ~/my_function/my_virtual_env/lib/python3.11/site-packages$ cd ../../../../
 #     ~/my_function$ zip my_deployment_package.zip lambda_function.py
-#
 # Use Python zipfile module to create and manage the zip file
-import os
-import zipfile
-
-
-# Zip dependencies at /Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages
-# to RMAnalyzer.zip
-def zip_dependencies():
-    print("Zipping dependencies...")
-    # Get current working directory
-    cwd = os.getcwd()
-    # Change directory to dependencies
-    os.chdir(
-        "/Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages"
-    )
-    # Create zip file
-    zipf = zipfile.ZipFile(
-        cwd + "/Deployment/RMAnalyzer.zip", "w", zipfile.ZIP_DEFLATED
-    )
-    # Add all files in directory to zip file
-    for root, dirs, files in os.walk("."):
-        for file in files:
-            zipf.write(os.path.join(root, file))
-    # Close zip file
-    zipf.close()
-    # Change directory back to original
-    os.chdir(cwd)
-    print("Done.")
-
-
-# Zip main.py, classes.py, config.json files to Deployment/RMAnalyzer.zip
-# Change "w" to "a" to append to existing zip file
-def zip_main():
-    print("Zipping main.py, classes.py, config.json...")
-    with zipfile.ZipFile("Deployment/RMAnalyzer.zip", "w") as zipObj:
-        # Add multiple files to the zip
-        zipObj.write("main.py")
-        zipObj.write("classes.py")
-        zipObj.write("config.json")
-    print("Done.")
-
-
-def inspect_zip_contents(zip_file_path, temp_extract_dir):
-    # Extract zip file to a temporary directory
-    with zipfile.ZipFile(zip_file_path, "r") as zip_ref:
-        zip_ref.extractall(temp_extract_dir)
-
-    # Print the contents of the temporary directory
-    for root, dirs, files in os.walk(temp_extract_dir):
-        for dir in dirs:
-            print(
-                os.path.join(root, dir)[len(temp_extract_dir) :]
-            )  # Print relative path
-        for file in files:
-            print(
-                os.path.join(root, file)[len(temp_extract_dir) :]
-            )  # Print relative path
-
-
-# If venv dependencies are needed, use:
-# zip_dependencies()
-zip_main()
-# For testing, use:
-# inspect_zip_contents('Deployment/RMAnalyzer.zip', 'Deployment/Temp')
-
-
+#
 # Update AWS Lambda function using the following command:
 #     aws lambda update-function-code --function-name RMAnalyzer --zip-file fileb://RMAnalyzer.zip --profile my-dev-profile
 # To handle the case where token has expired, run the following:
 #     aws sso login --profile my-dev-profile
-import subprocess
+#
+# Run this script from the command line in RMAnalyzer directory using:
+#     python3 Depdeployment_script.py -z -d
 
 
-# Execute aws lambda update-function-code --function-name RMAnalyzer --zip-file fileb://RMAnalyzer.zip --profile my-dev-profile
-# from the command line to update the Lambda function
+# GLOBALS
+PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer"
+DEPL_ZIP = "/Users/roccodavino/Repos/RMAnalyzer/Deployment/RMAnalyzer.zip"
+DEPS_DIR = "/Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages"
+
+
+# FUNCTIONS
+# Zip dependencies to RMAnalyzer.zip
+def zip_dependencies():
+    print("Zipping dependencies...")
+    cwd = os.getcwd()
+    os.chdir(DEPS_DIR)
+    with zipfile.ZipFile(DEPL_ZIP, "w") as zipObj:
+        # Add all files in directory to zip file
+        for root, dirs, files in os.walk("."):
+            for file in files:
+                zipObj.write(os.path.join(root, file))
+    os.chdir(cwd)
+    print("Done.")
+
+
+# Zip main files to Deployment/RMAnalyzer.zip
+def zip_main():
+    cwd = os.getcwd()
+    os.chdir(PKG_DIR)
+    mode = (
+        "w" if not args.zip_deps else "a"
+    )  # Change "w" to "a" to append to existing zip file
+    print("Zipping main files...")
+    with zipfile.ZipFile(DEPL_ZIP, mode) as zipObj:
+        zipObj.write("main.py")
+        zipObj.write("classes.py")
+        zipObj.write("config.json")
+    os.chdir(cwd)
+    print("Done.")
+
+
+# Execute AWS Lambda function update from the command line
 def update_lambda_function():
     print("Updating Lambda function...")
     process = subprocess.Popen(
@@ -94,7 +72,7 @@ def update_lambda_function():
             "--function-name",
             "RMAnalyzer",
             "--zip-file",
-            "fileb://Deployment/RMAnalyzer.zip",
+            f"fileb://{DEPL_ZIP}",
             "--profile",
             "my-dev-profile",
         ],
@@ -103,11 +81,35 @@ def update_lambda_function():
     )
     stdout, stderr = process.communicate()
     if process.returncode != 0:
-        error_message = f"{stderr.decode('utf-8')}: run 'aws sso login --profile my-dev-profile' and try again."
-        print(error_message)
+        print(
+            f"{stderr.decode('utf-8')}: run 'aws sso login --profile my-dev-profile' and try again."
+        )
     else:
-        success_message = stdout.decode("utf-8")
-        print(success_message)
+        print(stdout.decode("utf-8"))
 
+
+# MAIN
+# Parse arguments from command line using argparse
+parser = argparse.ArgumentParser(description="Update Lambda function.")
+parser.add_argument(
+    "-z",
+    "--zip",
+    action="store_true",
+    dest="zip_main",
+    help="Zip main files.",
+)
+parser.add_argument(
+    "-d",
+    "--deps",
+    action="store_true",
+    dest="zip_deps",
+    help="Zip dependencies.",
+)
+args = parser.parse_args()
+
+if args.zip_deps:
+    zip_dependencies()
+if args.zip_main:
+    zip_main()
 
 update_lambda_function()

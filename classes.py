@@ -157,7 +157,7 @@ class SpreadsheetParser:
                 )
                 results.append(transaction)
             except (ValueError, KeyError) as e:
-                logger.error(f"Invalid transaction data in row {row}: {str(e)}")
+                logger.warning(f"Invalid transaction data in row {row}: {str(e)}")
                 continue
         return results
 

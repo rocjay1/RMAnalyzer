@@ -1,7 +1,8 @@
-import csv
-from datetime import datetime, date
-from enum import Enum
+import sys
 import logging
+from datetime import datetime, date
+import csv
+from enum import Enum
 import json
 import boto3
 from botocore import exceptions
@@ -22,12 +23,12 @@ def money_format_helper(num):
     return MONEY_FORMAT.format(num)
 
 
-def load_config_helper(config=CONFIG):
+def load_config(config=CONFIG):
     try:
         file_content = read_s3_file(config["Bucket"], config["Key"])
         return json.loads(file_content)
     except (exceptions.ClientError, json.JSONDecodeError) as e:
-        logger.error(str(e))
+        logger.error(f"Error loading config: {str(e)}")
         raise
 
 
@@ -110,7 +111,7 @@ class Person:
 class Summary:
     def __init__(self, date, config=None):
         if not config:
-            config = load_config_helper()
+            config = load_config()
         self.date = date
 
         try:
@@ -253,7 +254,7 @@ class EmailGenerator:
 
 
 # MAIN
-def main(file_path):
+def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary = SpreadsheetSummary(date.today(), file_content)
@@ -267,8 +268,13 @@ def lambda_handler(event, context):
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]
     file_path = f"s3://{bucket}/{key}"
-    main(file_path)
+    process_file(file_path)
 
 
 if __name__ == "__main__":
-    main()
+    # Check if file path is provided
+    if len(sys.argv) != 2:
+        logger.error("Please provide a file path.")
+        sys.exit(1)
+    
+    process_file(sys.argv[1])

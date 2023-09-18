@@ -69,6 +69,7 @@ def update_lambda_function():
         )
     else:
         print(stdout.decode("utf-8"))
+        print("Done.")
 
 
 def main():

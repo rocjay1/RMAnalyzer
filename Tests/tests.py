@@ -20,7 +20,7 @@ class TestSummaryConstructor(unittest.TestCase):
         s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
 
-        summary = Summary(date.today(), load_config_helper(config))
+        summary = Summary(date.today(), load_config(config))
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
         self.assertEqual(summary.people[0].name, "George")
@@ -222,7 +222,7 @@ class TestGenerateSummaryEmail(unittest.TestCase):
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,
-            config=load_config_helper(config),
+            config=load_config(config),
         )
         (
             source,
@@ -238,6 +238,41 @@ class TestGenerateSummaryEmail(unittest.TestCase):
             (source, to_addresses, subject, html_body),
             (correct_source, correct_to_addresses, correct_subject, correct_html_body),
         )
+
+
+class TestLoadConfig(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "test-bucket"
+        self.key = "test-key"
+        self.data = "Hello, World!"
+
+    # Test load_config on a bad S3 key
+    @mock_s3
+    def test_load_config_bad_key(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        config = {"Bucket": self.bucket, "Key": "bad-key"}
+        with self.assertRaises(exceptions.ClientError):
+            load_config(config)
+
+    # Test load_config on a bad S3 bucket
+    @mock_s3
+    def test_load_config_bad_bucket(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        config = {"Bucket": "bad-bucket", "Key": self.key}
+        with self.assertRaises(exceptions.ClientError):
+            load_config(config)
+
+    # Test load_config on a bad JSON file
+    @mock_s3
+    def test_load_config_bad_json(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        config = {"Bucket": self.bucket, "Key": self.key}
+        with self.assertRaises(json.decoder.JSONDecodeError):
+            load_config(config)
 
 
 def main():

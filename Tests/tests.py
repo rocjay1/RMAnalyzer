@@ -1,25 +1,26 @@
-from RMAnalyzer.main import read_s3_file, send_email
-from RMAnalyzer.classes import (
-    Summary,
-    Person,
-    Transaction,
-    Category,
-    SpreadsheetParser,
-    SpreadsheetSummary,
-    EmailGenerator,
-    load_config_helper,
-    DATE_FORMAT,
-)
-from datetime import date
+from RMAnalyzer.main import *
 import unittest
 import boto3
 from botocore import exceptions
 from moto import mock_s3, mock_ses
+from datetime import date
 
 
 class TestSummaryConstructor(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "test-bucket"
+        self.key = "test-key"
+        with open("tests/config.json", "r") as f:
+            self.data = f.read()
+
+    @mock_s3
     def test_summary_constructor_from_config(self):
-        summary = Summary(date.today(), config=load_config_helper("tests/config.json"))
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        config = {"Bucket": self.bucket, "Key": self.key}
+
+        summary = Summary(date.today(), load_config_helper(config))
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
         self.assertEqual(summary.people[0].name, "George")
@@ -203,13 +204,25 @@ class TestSendEmail(unittest.TestCase):
 
 
 class TestGenerateSummaryEmail(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "test-bucket"
+        self.key = "test-key"
+        with open("tests/config.json", "r") as f:
+            self.data = f.read()
+
+    @mock_s3
     def test_generate_summary_email(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        config = {"Bucket": self.bucket, "Key": self.key}
+
         with open("Tests/valid.csv", "r") as f:
             spreadsheet_content = f.read()
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,
-            config=load_config_helper("tests/config.json"),
+            config=load_config_helper(config),
         )
         (
             source,

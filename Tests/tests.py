@@ -12,8 +12,8 @@ from datetime import date
 
 class TestSummaryConstructor(unittest.TestCase):
     def setUp(self):
-        self.bucket = "test-bucket"
-        self.key = "test-key"
+        self.bucket = "rm-analyzer-sheets"
+        self.key = "config.json"
         with open("tests/config.json", "r") as f:
             self.data = f.read()
 
@@ -29,6 +29,17 @@ class TestSummaryConstructor(unittest.TestCase):
         self.assertEqual(len(summary.people), 2)
         self.assertEqual(summary.people[0].name, "George")
         self.assertEqual(summary.people[1].name, "Tootie")
+
+    @mock_s3
+    # Test summary constructor with no config specified
+    def test_summary_constructor_no_config(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+
+        summary = Summary(date.today(), load_config())
+        self.assertEqual(summary.date, date.today())
+        self.assertEqual(len(summary.people), 2)
 
     def test_summary_constructor_bad_dict(self):
         bad_dict = ["bad", "dict"]

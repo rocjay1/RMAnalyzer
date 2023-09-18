@@ -12,7 +12,7 @@ from datetime import date
 
 class TestSummaryConstructor(unittest.TestCase):
     def setUp(self):
-        self.bucket = "rm-analyzer-sheets"
+        self.bucket = "rm-analyzer-config"
         self.key = "config.json"
         with open("tests/config.json", "r") as f:
             self.data = f.read()

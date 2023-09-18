@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 DATE_FORMAT = "%Y-%m-%d"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG = {"Bucket": "rm-analyzer-sheets", "Key": "config.json"}
+CONFIG = {"Bucket": "rm-analyzer-config", "Key": "config.json"}
 
 
 # HELPER FUNCTIONS

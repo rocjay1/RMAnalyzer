@@ -158,7 +158,8 @@ class Summary:
     def add_persons_transactions(self, parsed_transactions, person):
         for transaction in parsed_transactions:
             if (
-                transaction.account_number in person.account_numbers
+                transaction.account_number
+                in person.account_numbers
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):
@@ -264,7 +265,7 @@ class EmailGenerator:
 
 
 # MAIN
-def process_file(file_path):
+def main(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary = SpreadsheetSummary(date.today(), file_content)
@@ -278,7 +279,7 @@ def lambda_handler(event, context):
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]
     file_path = f"s3://{bucket}/{key}"
-    process_file(file_path)
+    main(file_path)
 
 
 if __name__ == "__main__":
@@ -287,4 +288,4 @@ if __name__ == "__main__":
         logger.error("Please provide a file path.")
         sys.exit(1)
 
-    process_file(sys.argv[1])
+    main(sys.argv[1])

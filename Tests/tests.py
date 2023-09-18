@@ -2,10 +2,6 @@
 # Author: Rocco Davino
 
 
-import sys
-
-sys.path.append("/Users/roccodavino/Repos/RMAnalyzer")
-
 from RMAnalyzer.main import *
 import unittest
 import boto3

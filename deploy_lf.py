@@ -1,6 +1,6 @@
 # Desc: Deployment script to update AWS Lambda function
 # Author: Rocco Davino
-# Usage: python3 Repos/RMAnalyzer/Deployment/deployment_script.py -z -d
+# Usage: python3 Repos/RMAnalyzer/Deployment/deploy_lf.py -z -d
 
 
 import os

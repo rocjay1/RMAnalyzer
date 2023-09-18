@@ -234,6 +234,7 @@ class TestGenerateSummaryEmail(unittest.TestCase):
 
         with open("Tests/valid.csv", "r") as f:
             spreadsheet_content = f.read()
+            
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,

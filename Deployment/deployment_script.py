@@ -9,11 +9,9 @@ import argparse
 
 
 # Path to the root of the project
-PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer"
+PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer/RMAnalyzer"
 # Path to the zip file to be uploaded to AWS Lambda
-DEPL_ZIP = "/Users/roccodavino/Repos/RMAnalyzer/Deployment/RMAnalyzer.zip"
-# Main files to be zipped
-PKG_FILES = ["main.py", "classes.py", "config.json"]
+DEPL_ZIP = "/Users/roccodavino/Repos/RMAnalyzer/deployment/RMAnalyzer.zip"
 # Path to the dependencies directory
 DEPS_DIR = "/Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages"
 # Name of the Lambda function
@@ -40,8 +38,9 @@ def zip_main():
     )  # Change "w" to "a" to append to existing zip file
     print("Zipping main files...")
     with zipfile.ZipFile(DEPL_ZIP, mode) as zipObj:
-        for file in PKG_FILES:
-            zipObj.write(file)
+        for root, dirs, files in os.walk("."):
+            for file in files:
+                zipObj.write(os.path.join(root, file))
     os.chdir(cwd)
     print("Done.")
 

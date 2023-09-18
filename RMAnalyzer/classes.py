@@ -17,7 +17,7 @@ def money_format_helper(num):
     return MONEY_FORMAT.format(num)
 
 
-def load_config_helper(config_file="config.json"):
+def load_config_helper(config_file="data/config.json"):
     """Load configuration from a JSON file."""
     try:
         with open(config_file, "r") as f:

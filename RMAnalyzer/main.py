@@ -2,7 +2,7 @@ import logging
 from datetime import date
 import boto3
 from botocore import exceptions
-from classes import *
+from RMAnalyzer.classes import SpreadsheetSummary, EmailGenerator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
     except exceptions.ClientError as e:
         logger.error(f"Error sending email: {str(e)}")
         raise
+
 
 # MAIN
 def process_file(file_path):

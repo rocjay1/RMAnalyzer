@@ -1,5 +1,16 @@
-from main import *
-from classes import *
+from RMAnalyzer.main import read_s3_file, send_email
+from RMAnalyzer.classes import (
+    Summary,
+    Person,
+    Transaction,
+    Category,
+    SpreadsheetParser,
+    SpreadsheetSummary,
+    EmailGenerator,
+    load_config_helper,
+    DATE_FORMAT,
+)
+from datetime import date
 import unittest
 import boto3
 from botocore import exceptions
@@ -8,7 +19,7 @@ from moto import mock_s3, mock_ses
 
 class TestSummaryConstructor(unittest.TestCase):
     def test_summary_constructor_from_config(self):
-        summary = Summary(date.today(), config=load_config_helper("Tests/config.json"))
+        summary = Summary(date.today(), config=load_config_helper("tests/config.json"))
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
         self.assertEqual(summary.people[0].name, "George")
@@ -198,7 +209,7 @@ class TestGenerateSummaryEmail(unittest.TestCase):
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,
-            config=load_config_helper("Tests/config.json"),
+            config=load_config_helper("tests/config.json"),
         )
         (
             source,

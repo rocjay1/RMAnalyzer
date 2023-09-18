@@ -41,7 +41,8 @@ def zip_main():
     with zipfile.ZipFile(DEPL_ZIP, mode) as zipObj:
         for root, dirs, files in os.walk("."):
             for file in files:
-                zipObj.write(os.path.join(root, file))
+                if file.endswith(".py") and not file.endswith("__init__.py"):
+                    zipObj.write(os.path.join(root, file))
     os.chdir(cwd)
     print("Done.")
 

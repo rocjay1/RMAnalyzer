@@ -37,7 +37,7 @@ class TestSummaryConstructor(unittest.TestCase):
         s3.create_bucket(Bucket=self.bucket)
         s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
 
-        summary = Summary(date.today(), load_config())
+        summary = Summary(date.today())
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
 

@@ -159,7 +159,8 @@ class Summary:
         for transaction in parsed_transactions:
             if (
                 transaction.account_number in person.account_numbers
-                and transaction.date.month == self.date.month
+                # Commenting out the following line will include transactions from previous months
+                # and transaction.date.month == self.date.month
             ):
                 person.add_transaction(transaction)
 

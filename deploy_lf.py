@@ -12,7 +12,7 @@ import argparse
 # Path to the root of the project
 PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer/RMAnalyzer"
 # Path to the zip file to be uploaded to AWS Lambda
-DEPL_ZIP = "/Users/roccodavino/Repos/RMAnalyzer/RMAnalyzer.zip"
+DEPL_ZIP = "/Users/roccodavino/Packages/RMAnalyzer.zip"
 # Path to the dependencies directory
 DEPS_DIR = "/Users/roccodavino/.pyenv/versions/3.11.5/envs/rm_analyzer/lib/python3.11/site-packages"
 # Name of the Lambda function

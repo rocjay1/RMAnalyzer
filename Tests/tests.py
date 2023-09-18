@@ -2,6 +2,10 @@
 # Author: Rocco Davino
 
 
+import sys
+
+sys.path.append("/Users/roccodavino/Repos/RMAnalyzer")
+
 from RMAnalyzer.main import *
 import unittest
 import boto3
@@ -234,7 +238,7 @@ class TestGenerateSummaryEmail(unittest.TestCase):
 
         with open("Tests/valid.csv", "r") as f:
             spreadsheet_content = f.read()
-            
+
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,
@@ -249,7 +253,7 @@ class TestGenerateSummaryEmail(unittest.TestCase):
         correct_source = "bebas@gmail.com"
         correct_to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
         correct_subject = f"Monthly Summary for {summary.date.strftime(DATE_FORMAT)}"
-        correct_html_body = "<html>\n        <head>\n            <style>\n                table {\n                    border-collapse: collapse;\n                    width: 100%;\n                }\n                \n                th, td {\n                    border: 1px solid black;\n                    padding: 8px 12px;  /* Add padding to table cells */\n                    text-align: left;\n                }\n\n                th {\n                    background-color: #f2f2f2;  /* A light background color for headers */\n                }\n            </style>\n        </head>\n        <body><table border='1'>\n<thead>\n<tr>\n<th></th>\n<th>Dining & Drinks</th>\n<th>Groceries</th>\n<th>Entertainment & Rec.</th>\n<th>Total</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>George</td>\n<td>12.66</td>\n<td>0.00</td>\n<td>0.00</td>\n<td>12.66</td>\n</tr>\n<tr>\n<td>Tootie</td>\n<td>0.00</td>\n<td>47.71</td>\n<td>0.00</td>\n<td>47.71</td>\n</tr>\n<tr>\n<td>Difference (George - Tootie)</td>\n<td>12.66</td>\n<td>-47.71</td>\n<td>0.00</td>\n<td>-35.05</td>\n</tr>\n</tbody>\n</table>\n</body>\n</html>"
+        correct_html_body = "<html>\n        <head>\n            <style>\n                table {\n                    border-collapse: collapse;\n                    width: 100%;\n                }\n                \n                th, td {\n                    border: 1px solid black;\n                    padding: 8px 12px;  /* Add padding to table cells */\n                    text-align: left;\n                }\n\n                th {\n                    background-color: #f2f2f2;  /* A light background color for headers */\n                }\n            </style>\n        </head>\n        <body><table border='1'>\n<thead>\n<tr>\n<th></th>\n<th>Dining & Drinks</th>\n<th>Groceries</th>\n<th>Entertainment & Rec.</th>\n<th>Total</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>George</td>\n<td>12.66</td>\n<td>0.00</td>\n<td>0.00</td>\n<td>12.66</td>\n</tr>\n<tr>\n<td>Tootie</td>\n<td>0.00</td>\n<td>47.71</td>\n<td>17.00</td>\n<td>64.71</td>\n</tr>\n<tr>\n<td>Difference (George - Tootie)</td>\n<td>12.66</td>\n<td>-47.71</td>\n<td>-17.00</td>\n<td>-52.05</td>\n</tr>\n</tbody>\n</table>\n</body>\n</html>"
         self.assertEqual(
             (source, to_addresses, subject, html_body),
             (correct_source, correct_to_addresses, correct_subject, correct_html_body),

@@ -1,3 +1,12 @@
+# Desc: This script is used to generate a monthly summary of expenses from a spreadsheet.
+#       It is meant to be run as an AWS Lambda function triggered by an S3 event.
+#       The spreadsheet should be an export from Rocket Money.
+#       The configuration file should be stored in an S3 bucket.
+#       The Lambda function should have access to the S3 bucket and SES.
+# Usage: python3 RMAnalyzer/main.py s3://<bucket>/<key>
+# Author: Rocco Davino
+
+
 import sys
 import logging
 from datetime import datetime, date
@@ -276,5 +285,5 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         logger.error("Please provide a file path.")
         sys.exit(1)
-    
+
     process_file(sys.argv[1])

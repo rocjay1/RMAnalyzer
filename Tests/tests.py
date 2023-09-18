@@ -1,3 +1,7 @@
+# Desc: Unit tests for RMAnalyzer
+# Author: Rocco Davino
+
+
 from RMAnalyzer.main import *
 import unittest
 import boto3

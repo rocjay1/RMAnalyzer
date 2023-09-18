@@ -3,7 +3,7 @@ from classes import *
 import unittest
 import boto3
 from botocore import exceptions
-from moto import mock_s3, mock_ses, mock_events
+from moto import mock_s3, mock_ses
 
 
 class TestSummaryConstructor(unittest.TestCase):

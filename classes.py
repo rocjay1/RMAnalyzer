@@ -7,12 +7,12 @@ import json
 logger = logging.getLogger(__name__)
 
 
-# constants
+# CONSTANTS
 DATE_FORMAT = "%Y-%m-%d"
 MONEY_FORMAT = "{0:.2f}"
 
 
-# helpers
+# HELPER FUNCTIONS
 def money_format_helper(num):
     return MONEY_FORMAT.format(num)
 
@@ -27,7 +27,7 @@ def load_config_helper(config_file="config.json"):
         raise
 
 
-# core classes
+# CLASSES
 class Category(Enum):
     DINING = "Dining & Drinks"
     GROCERIES = "Groceries"

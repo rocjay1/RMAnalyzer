@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Lambda helper functions
+# LAMBDA HELPER FUNCTIONS
 def read_s3_file(bucket, key):
     s3 = boto3.client("s3")
     try:
@@ -37,8 +37,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         logger.error(f"Error sending email: {str(e)}")
         raise
 
-
-# main function
+# MAIN
 def process_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
@@ -49,7 +48,6 @@ def process_file(file_path):
     send_email(source, to_addresses, subject, html_body)
 
 
-# called as lambda.main in AWS Lambda function
 def lambda_handler(event, context):
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]

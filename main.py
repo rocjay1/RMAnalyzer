@@ -3,7 +3,7 @@
 #       The spreadsheet should be an export from Rocket Money.
 #       The configuration file should be stored in an S3 bucket.
 #       The Lambda function should have access to the S3 bucket and SES.
-# Usage: python3 RMAnalyzer/main.py s3://<bucket>/<key>
+# Usage: python Repose/RMAnalyzer/main.py s3://<bucket>/<key>
 # Author: Rocco Davino
 
 

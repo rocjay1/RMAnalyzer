@@ -23,12 +23,13 @@ logger = logging.getLogger(__name__)
 
 # CONSTANTS
 DATE_FORMAT = "%Y-%m-%d"
+DISPLAY_DATE_FORMAT = "%m/%y"
 MONEY_FORMAT = "{0:.2f}"
 CONFIG = {"Bucket": "rm-analyzer-config", "Key": "config.json"}
 
 
 # HELPER FUNCTIONS
-def money_format_helper(num):
+def format_money_helper(num):
     return MONEY_FORMAT.format(num)
 
 
@@ -241,8 +242,8 @@ class EmailGenerator:
             html += "<tr>\n"
             html += f"<td>{person.name}</td>\n"
             for category in Category:
-                html += f"<td>{money_format_helper(person.calculate_expenses(category))}</td>\n"
-            html += f"<td>{money_format_helper(person.calculate_expenses())}</td>\n"
+                html += f"<td>{format_money_helper(person.calculate_expenses(category))}</td>\n"
+            html += f"<td>{format_money_helper(person.calculate_expenses())}</td>\n"
             html += "</tr>\n"
 
         # Assuming there will always be exactly 2 people for the difference calculation
@@ -251,21 +252,21 @@ class EmailGenerator:
             html += "<tr>\n"
             html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
             for category in Category:
-                html += f"<td>{money_format_helper(summary.calculate_2_person_difference(person1, person2, category))}</td>\n"
-            html += f"<td>{money_format_helper(summary.calculate_2_person_difference(person1, person2))}</td>\n"
+                html += f"<td>{format_money_helper(summary.calculate_2_person_difference(person1, person2, category))}</td>\n"
+            html += f"<td>{format_money_helper(summary.calculate_2_person_difference(person1, person2))}</td>\n"
             html += "</tr>\n"
 
         html += "</tbody>\n</table>\n</body>\n</html>"
         return (
             summary.owner,
             [p.email for p in summary.people],
-            f"Monthly Summary for {summary.date.strftime(DATE_FORMAT)}",
+            f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
             html,
         )
 
 
 # MAIN
-def main(file_path):
+def analyze_file(file_path):
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary = SpreadsheetSummary(date.today(), file_content)
@@ -279,7 +280,7 @@ def lambda_handler(event, context):
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]
     file_path = f"s3://{bucket}/{key}"
-    main(file_path)
+    analyze_file(file_path)
 
 
 if __name__ == "__main__":
@@ -288,4 +289,4 @@ if __name__ == "__main__":
         logger.error("Please provide a file path.")
         sys.exit(1)
 
-    main(sys.argv[1])
+    analyze_file(sys.argv[1])

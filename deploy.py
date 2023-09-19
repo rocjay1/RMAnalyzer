@@ -1,6 +1,6 @@
 # Desc: Deployment script to update AWS Lambda function
 # Author: Rocco Davino
-# Usage: python3 Repos/RMAnalyzer/Deployment/deploy_lf.py -z -d
+# Usage: python3 Repos/RMAnalyzer/deploy.py -z -d
 
 
 import os
@@ -10,7 +10,7 @@ import argparse
 
 
 # Path to the root of the project
-PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer/RMAnalyzer"
+PKG_DIR = "/Users/roccodavino/Repos/RMAnalyzer"
 # Path to the zip file to be uploaded to AWS Lambda
 DEPL_ZIP = "/Users/roccodavino/Packages/RMAnalyzer.zip"
 # Path to the dependencies directory
@@ -39,10 +39,7 @@ def zip_main():
     )  # Change "w" to "a" to append to existing zip file
     print("Zipping main files...")
     with zipfile.ZipFile(DEPL_ZIP, mode) as zipObj:
-        for root, dirs, files in os.walk("."):
-            for file in files:
-                if file.endswith(".py") and not file.endswith("__init__.py"):
-                    zipObj.write(os.path.join(root, file))
+       zipObj.write("main.py")
     os.chdir(cwd)
     print("Done.")
 

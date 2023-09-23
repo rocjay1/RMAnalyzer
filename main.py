@@ -3,7 +3,7 @@
 #       The spreadsheet should be an export from Rocket Money.
 #       The configuration file should be stored in an S3 bucket.
 #       The Lambda function should have access to the S3 bucket and SES.
-# Usage: python Repose/RMAnalyzer/main.py s3://<bucket>/<key>
+# Usage: python Repos/RMAnalyzer/main.py s3://<bucket>/<key>
 # Author: Rocco Davino
 
 
@@ -76,6 +76,9 @@ class Category(Enum):
     DINING = "Dining & Drinks"
     GROCERIES = "Groceries"
     ENTERTAINMENT = "Entertainment & Rec."
+    PETS = "Pets"
+    BILLS = "Bills & Utilities"
+    OTHER = "R & T Shared"
 
 
 class Transaction:

@@ -39,7 +39,7 @@ def zip_main():
     )  # Change "w" to "a" to append to existing zip file
     print("Zipping main files...")
     with zipfile.ZipFile(DEPL_ZIP, mode) as zipObj:
-       zipObj.write("main.py")
+        zipObj.write("main.py")
     os.chdir(cwd)
     print("Done.")
 

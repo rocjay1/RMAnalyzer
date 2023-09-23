@@ -81,12 +81,13 @@ class Category(Enum):
 
 
 class Transaction:
-    def __init__(self, date, name, account_number, amount, category):
+    def __init__(self, date, name, account_number, amount, category, ignore):
         self.date = date
         self.name = name
         self.account_number = account_number
         self.amount = amount
         self.category = category
+        self.ignore = ignore
 
 
 class Person:
@@ -161,8 +162,8 @@ class Summary:
     def add_persons_transactions(self, parsed_transactions, person):
         for transaction in parsed_transactions:
             if (
-                transaction.account_number
-                in person.account_numbers
+                transaction.account_number in person.account_numbers
+                and not transaction.ignore
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):
@@ -196,6 +197,7 @@ class SpreadsheetParser:
                 transaction_account_number = int(row["Account Number"])
                 transaction_amount = float(row["Amount"])
                 transaction_category = Category(row["Category"])
+                transaction_ignore = bool(row["Ignored From"])
 
                 transaction = Transaction(
                     transaction_date,
@@ -203,6 +205,7 @@ class SpreadsheetParser:
                     transaction_account_number,
                     transaction_amount,
                     transaction_category,
+                    transaction_ignore
                 )
                 results.append(transaction)
             except (ValueError, KeyError) as e:

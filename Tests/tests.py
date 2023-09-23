@@ -10,12 +10,14 @@ from moto import mock_s3, mock_ses
 from datetime import date
 
 
+# Helper function to setup mock S3 bucket
 def setup_mock_s3(bucket_name, key, data):
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=bucket_name)
     s3.put_object(Bucket=bucket_name, Key=key, Body=data)
 
 
+# Helper function to read local file
 def read_local_file(file_path):
     with open(file_path, "r") as f:
         return f.read()

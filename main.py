@@ -75,7 +75,6 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
 class Category(Enum):
     DINING = "Dining & Drinks"
     GROCERIES = "Groceries"
-    ENTERTAINMENT = "Entertainment & Rec."
     PETS = "Pets"
     BILLS = "Bills & Utilities"
     OTHER = "R & T Shared"

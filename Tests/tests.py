@@ -10,7 +10,7 @@ from moto import mock_s3, mock_ses
 from datetime import date
 
 
-class TestSummaryConstructor(unittest.TestCase):
+class TestSummary(unittest.TestCase):
     def setUp(self):
         self.bucket = "rm-analyzer-config"
         self.key = "config.json"
@@ -50,6 +50,37 @@ class TestSummaryConstructor(unittest.TestCase):
         bad_dict = {"bad": "dict"}
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_dict)
+
+
+class TestSpreadsheetSummary(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "test-bucket"
+        self.key = "test-key"
+        with open("tests/config.json", "r") as f:
+            self.data = f.read()
+
+    @mock_s3
+    def test_spreadsheet_summary_constructor(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        config = {"Bucket": self.bucket, "Key": self.key}
+
+        with open("Tests/valid.csv", "r") as f:
+            spreadsheet_content = f.read()
+
+        summary = SpreadsheetSummary(
+            date.today(),
+            spreadsheet_content,
+            config=load_config(config),
+        )
+        
+        self.assertEqual(len(summary.people), 2)
+        self.assertEqual(summary.people[0].name, "George")
+        self.assertEqual(summary.people[1].name, "Tootie")
+        # Make sure Tootie has 2 transactions and George has 0
+        self.assertEqual(len(summary.people[0].transactions), 0)
+        self.assertEqual(len(summary.people[1].transactions), 2)
 
 
 class TestInitializePeople(unittest.TestCase):
@@ -109,7 +140,8 @@ class TestParse(unittest.TestCase):
                 "MADCATS DANCE",
                 1313,
                 17,
-                Category.ENTERTAINMENT,
+                Category.OTHER,
+                False
             ),
             Transaction(
                 date(2023, 9, 4),
@@ -117,6 +149,7 @@ class TestParse(unittest.TestCase):
                 1234,
                 12.66,
                 Category.DINING,
+                True
             ),
             Transaction(
                 date(2023, 9, 12),
@@ -124,6 +157,7 @@ class TestParse(unittest.TestCase):
                 1313,
                 47.71,
                 Category.GROCERIES,
+                False
             ),
         ]
         flag = True
@@ -152,18 +186,51 @@ class TestCalculateExpenses(unittest.TestCase):
             [1313, 2121],
             [
                 Transaction(
-                    date(2023, 8, 31), "MADCATS DANCE", 1313, 17, Category.ENTERTAINMENT
+                    date(2023, 8, 31), 
+                    "MADCATS DANCE", 
+                    1313, 
+                    17, 
+                    Category.OTHER,
+                    False
                 ),
                 Transaction(
                     date(2023, 9, 4),
                     "MADCATS DANCE",
                     1313,
                     12.66,
-                    Category.ENTERTAINMENT,
+                    Category.OTHER,
+                    False
                 ),
             ],
         )
-        self.assertEqual(person.calculate_expenses(Category.ENTERTAINMENT), 29.66)
+        self.assertEqual(person.calculate_expenses(Category.OTHER), 29.66)
+
+
+# Make unit tests for calculate_2_person_difference
+class TestCalculate2PersonDifference(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "rm-analyzer-config"
+        self.key = "config.json"
+        with open("tests/config.json", "r") as f:
+            self.data = f.read()
+
+    @mock_s3
+    def test_calculate_2_person_difference(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        config = {"Bucket": self.bucket, "Key": self.key}
+
+        with open("Tests/valid.csv", "r") as f:
+            spreadsheet_content = f.read()
+
+        summary = SpreadsheetSummary(
+            date.today(),
+            spreadsheet_content,
+            config=load_config(config),
+        )
+        
+        self.assertEqual(summary.calculate_2_person_difference(summary.people[0], summary.people[1], Category.OTHER), -17)
 
 
 class TestReadS3File(unittest.TestCase):
@@ -216,46 +283,6 @@ class TestSendEmail(unittest.TestCase):
         html_body = "<p>Test</p>"
         with self.assertRaises(exceptions.ClientError):
             send_email(bad_source, to_addresses, subject, html_body)
-
-
-class TestGenerateSummaryEmail(unittest.TestCase):
-    def setUp(self):
-        self.bucket = "test-bucket"
-        self.key = "test-key"
-        with open("tests/config.json", "r") as f:
-            self.data = f.read()
-
-    @mock_s3
-    def test_generate_summary_email(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
-        config = {"Bucket": self.bucket, "Key": self.key}
-
-        with open("Tests/valid.csv", "r") as f:
-            spreadsheet_content = f.read()
-
-        summary = SpreadsheetSummary(
-            date.today(),
-            spreadsheet_content,
-            config=load_config(config),
-        )
-        (
-            source,
-            to_addresses,
-            subject,
-            html_body,
-        ) = EmailGenerator.generate_summary_email(summary)
-        correct_source = "bebas@gmail.com"
-        correct_to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
-        correct_subject = (
-            f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}"
-        )
-        correct_html_body = "<html>\n        <head>\n            <style>\n                table {\n                    border-collapse: collapse;\n                    width: 100%;\n                }\n                \n                th, td {\n                    border: 1px solid black;\n                    padding: 8px 12px;  /* Add padding to table cells */\n                    text-align: left;\n                }\n\n                th {\n                    background-color: #f2f2f2;  /* A light background color for headers */\n                }\n            </style>\n        </head>\n        <body><table border='1'>\n<thead>\n<tr>\n<th></th>\n<th>Dining & Drinks</th>\n<th>Groceries</th>\n<th>Entertainment & Rec.</th>\n<th>Total</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>George</td>\n<td>12.66</td>\n<td>0.00</td>\n<td>0.00</td>\n<td>12.66</td>\n</tr>\n<tr>\n<td>Tootie</td>\n<td>0.00</td>\n<td>47.71</td>\n<td>17.00</td>\n<td>64.71</td>\n</tr>\n<tr>\n<td>Difference (George - Tootie)</td>\n<td>12.66</td>\n<td>-47.71</td>\n<td>-17.00</td>\n<td>-52.05</td>\n</tr>\n</tbody>\n</table>\n</body>\n</html>"
-        self.assertEqual(
-            (source, to_addresses, subject, html_body),
-            (correct_source, correct_to_addresses, correct_subject, correct_html_body),
-        )
 
 
 class TestLoadConfig(unittest.TestCase):

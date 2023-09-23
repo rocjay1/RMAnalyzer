@@ -10,20 +10,27 @@ from moto import mock_s3, mock_ses
 from datetime import date
 
 
+def setup_mock_s3(bucket_name, key, data):
+    s3 = boto3.client("s3")
+    s3.create_bucket(Bucket=bucket_name)
+    s3.put_object(Bucket=bucket_name, Key=key, Body=data)
+
+
+def read_local_file(file_path):
+    with open(file_path, "r") as f:
+        return f.read()
+
+
 class TestSummary(unittest.TestCase):
     def setUp(self):
         self.bucket = "rm-analyzer-config"
         self.key = "config.json"
-        with open("tests/config.json", "r") as f:
-            self.data = f.read()
+        self.data = read_local_file("tests/config.json")
 
     @mock_s3
     def test_summary_constructor_from_config(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        setup_mock_s3(self.bucket, self.key, self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
-
         summary = Summary(date.today(), load_config(config))
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
@@ -33,10 +40,7 @@ class TestSummary(unittest.TestCase):
     @mock_s3
     # Test summary constructor with no config specified
     def test_summary_constructor_no_config(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
-
+        setup_mock_s3(self.bucket, self.key, self.data)
         summary = Summary(date.today())
         self.assertEqual(summary.date, date.today())
         self.assertEqual(len(summary.people), 2)
@@ -56,18 +60,13 @@ class TestSpreadsheetSummary(unittest.TestCase):
     def setUp(self):
         self.bucket = "test-bucket"
         self.key = "test-key"
-        with open("tests/config.json", "r") as f:
-            self.data = f.read()
+        self.data = read_local_file("tests/config.json")
 
     @mock_s3
     def test_spreadsheet_summary_constructor(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        setup_mock_s3(self.bucket, self.key, self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
-
-        with open("Tests/valid.csv", "r") as f:
-            spreadsheet_content = f.read()
+        spreadsheet_content = read_local_file("tests/valid.csv")
 
         summary = SpreadsheetSummary(
             date.today(),
@@ -125,14 +124,12 @@ class TestInitializePeople(unittest.TestCase):
 
 class TestParse(unittest.TestCase):
     def test_parse_bad_spreadsheet(self):
-        with open("Tests/garbage.csv", "r") as f:
-            bad_spreadsheet_content = f.read()
+        bad_spreadsheet_content = read_local_file("tests/garbage.csv")
         test_result = SpreadsheetParser.parse(bad_spreadsheet_content)
         self.assertEqual(test_result, [])
 
     def test_parse_good_spreadsheet(self):
-        with open("Tests/valid.csv", "r") as f:
-            good_spreadsheet_content = f.read()
+        good_spreadsheet_content = read_local_file("tests/valid.csv")
         test_result = SpreadsheetParser.parse(good_spreadsheet_content)
         correct_result = [
             Transaction(
@@ -160,18 +157,13 @@ class TestParse(unittest.TestCase):
                 False
             ),
         ]
-        flag = True
         for i in range(len(test_result)):
-            if (
-                test_result[i].date != correct_result[i].date
-                or test_result[i].name != correct_result[i].name
-                or test_result[i].account_number != correct_result[i].account_number
-                or test_result[i].amount != correct_result[i].amount
-                or test_result[i].category != correct_result[i].category
-            ):
-                flag = False
-                break
-        self.assertEqual(flag, True)
+            self.assertEqual(test_result[i].date, correct_result[i].date)
+            self.assertEqual(test_result[i].name, correct_result[i].name)
+            self.assertEqual(test_result[i].account_number, correct_result[i].account_number)
+            self.assertEqual(test_result[i].amount, correct_result[i].amount)
+            self.assertEqual(test_result[i].category, correct_result[i].category)
+            self.assertEqual(test_result[i].ignore, correct_result[i].ignore)
 
 
 class TestCalculateExpenses(unittest.TestCase):
@@ -211,25 +203,18 @@ class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
         self.bucket = "rm-analyzer-config"
         self.key = "config.json"
-        with open("tests/config.json", "r") as f:
-            self.data = f.read()
+        self.data = read_local_file("tests/config.json")
 
     @mock_s3
     def test_calculate_2_person_difference(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        setup_mock_s3(self.bucket, self.key, self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
-
-        with open("Tests/valid.csv", "r") as f:
-            spreadsheet_content = f.read()
-
+        spreadsheet_content = read_local_file("tests/valid.csv")
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,
             config=load_config(config),
         )
-        
         self.assertEqual(summary.calculate_2_person_difference(summary.people[0], summary.people[1], Category.OTHER), -17)
 
 
@@ -241,9 +226,7 @@ class TestReadS3File(unittest.TestCase):
 
     @mock_s3
     def test_read_s3_file_success(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        setup_mock_s3(self.bucket, self.key, self.data)
         result = read_s3_file(self.bucket, self.key)
         self.assertEqual(result, self.data)
 
@@ -312,9 +295,7 @@ class TestLoadConfig(unittest.TestCase):
     # Test load_config on a bad JSON file
     @mock_s3
     def test_load_config_bad_json(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        setup_mock_s3(self.bucket, self.key, self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
         with self.assertRaises(json.decoder.JSONDecodeError):
             load_config(config)

@@ -2,14 +2,33 @@
 # Author: Rocco Davino
 
 
-from main import *
+import json
+from datetime import date
 import unittest
-from unittest.mock import patch
 from unittest.mock import MagicMock
+from unittest.mock import patch
 import boto3
 from botocore import exceptions
 from moto import mock_s3, mock_ses
-from datetime import date
+from main import (
+    Summary,
+    Person,
+    Transaction,
+    Category,
+    load_config,
+    SpreadsheetSummary,
+    SpreadsheetParser,
+    DISPLAY_DATE_FORMAT,
+    EmailGenerator,
+    send_email,
+    analyze_file,
+    lambda_handler,
+    read_s3_file,
+    DATE_FORMAT,
+    MONEY_FORMAT,
+    CONFIG,
+    format_money_helper,
+)
 
 
 CONFIG = {

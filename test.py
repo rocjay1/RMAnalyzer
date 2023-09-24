@@ -28,6 +28,7 @@ from main import (
     MONEY_FORMAT,
     CONFIG,
     format_money_helper,
+    NotIgnoredFrom,
 )
 
 
@@ -130,6 +131,90 @@ class TestSpreadsheetSummaryConstructor(unittest.TestCase):
         self.assertEqual(len(summary.people[1].transactions), 1)
 
 
+# Test the from_row function
+class TestFromRow(unittest.TestCase):
+    # Test that a typical row is parsed correctly as a Transaction object
+    def test_from_row(self):
+        row = {
+            "Date": "2023-08-31",
+            "Original Date": "2023-08-31",
+            "Account Type": "Credit Card",
+            "Account Name": "SavorOne",
+            "Account Number": "1313",
+            "Institution Name": "Capital One",
+            "Name": "MADCATS DANCE",
+            "Custom Name": "",
+            "Amount": "17",
+            "Description": "MADCATS DANCE",
+            "Category": "R & T Shared",
+            "Note": "",
+            "Ignored From": "",
+            "Tax Deductible": "",
+        }
+        test_result = Transaction.from_row(row)
+        test_result_attrs = []
+        for attr in dir(test_result):
+            if not attr.startswith("__"):
+                test_result_attrs.append(attr)
+
+        expected_result = Transaction(
+            date(2023, 8, 31),
+            "MADCATS DANCE",
+            1313,
+            17.0,
+            Category.OTHER,
+            NotIgnoredFrom.NOT_IGNORED,
+        )
+        expected_result_attrs = []
+        for attr in dir(expected_result):
+            if not attr.startswith("__"):
+                expected_result_attrs.append(attr)
+
+        self.assertListEqual(test_result_attrs, expected_result_attrs)
+
+    # Test that a row with an invalid category is ignored
+    def test_from_row_bad_category(self):
+        row = {
+            "Date": "2023-09-17",
+            "Original Date": "2023-09-17",
+            "Account Type": "Cash",
+            "Account Name": "Savings Account",
+            "Account Number": "2121",
+            "Institution Name": "Ally Bank",
+            "Name": "SURPISE SAVINGS",
+            "Custom Name": "",
+            "Amount": "-10",
+            "Description": "SURPISE SAVINGS",
+            "Category": "Internal Transfers",
+            "Note": "",
+            "Ignored From": "",
+            "Tax Deductible": "",
+        }
+        test_result = Transaction.from_row(row)
+        self.assertIsNone(test_result)
+
+    # Test that a row with an Ignored From value is ignored
+    def test_from_row_ignored(self):
+        row = {
+            "Date": "2023-09-04",
+            "Original Date": "2023-09-04",
+            "Account Type": "Credit Card",
+            "Account Name": "CREDIT CARD",
+            "Account Number": "1234",
+            "Institution Name": "Chase",
+            "Name": "TIKICAT BAR",
+            "Custom Name": "",
+            "Amount": "12.66",
+            "Description": "TIKICAT BAR",
+            "Category": "Dining & Drinks",
+            "Note": "",
+            "Ignored From": "budget",
+            "Tax Deductible": "",
+        }
+        test_result = Transaction.from_row(row)
+        self.assertIsNone(test_result)
+
+
 # Test the initialize_people function
 class TestInitializePeople(unittest.TestCase):
     def test_initialize_config_keys(self):
@@ -163,58 +248,47 @@ class TestInitializePeople(unittest.TestCase):
 
 # Test the SpreadsheetParser.parse function
 class TestParse(unittest.TestCase):
+    # Test that a garbage spreadsheet is parsed as an empty list
     def test_parse_bad_spreadsheet(self):
         test_result = SpreadsheetParser.parse(GARBAGE)
         self.assertEqual(test_result, [])
 
     # Test that a typical row is parsed correctly as a Transaction object
+    # We already tested the from_row function, so we just need to check from_row was called with the proper arguments
     def test_parse_good_row(self):
         csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
-        test_result = SpreadsheetParser.parse(
-            csv_string
-        )  # need to compare Transaction objects by checking each attribute
-        test_result_attrs = []
-        for attr in dir(test_result[0]):
-            if not attr.startswith("__"):
-                test_result_attrs.append(attr)
-
-        expected_result = Transaction(
-            date(2023, 8, 31), "MADCATS DANCE", 1313, 17, Category.OTHER, False
+        mock_row = {
+            "Date": "2023-08-31",
+            "Original Date": "2023-08-31",
+            "Account Type": "Credit Card",
+            "Account Name": "SavorOne",
+            "Account Number": "1313",
+            "Institution Name": "Capital One",
+            "Name": "MADCATS DANCE",
+            "Custom Name": "",
+            "Amount": "17",
+            "Description": "MADCATS DANCE",
+            "Category": "R & T Shared",
+            "Note": "",
+            "Ignored From": "",
+            "Tax Deductible": "",
+        }
+        mock_transaction = Transaction(
+            date(2023, 8, 31),
+            "MADCATS DANCE",
+            1313,
+            17.0,
+            Category.OTHER,
+            NotIgnoredFrom.NOT_IGNORED,
         )
-        expected_result_attrs = []
-        for attr in dir(expected_result):
-            if not attr.startswith("__"):
-                expected_result_attrs.append(attr)
-
-        self.assertListEqual(test_result_attrs, expected_result_attrs)
-
-    # Test a row with an invalid category
-    def test_parse_bad_category(self):
-        csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-09-17,2023-09-17,Cash,Savings Account,2121,Ally Bank,SURPISE SAVINGS,,-10,SURPISE SAVINGS,Internal Transfers,,,"""
-        test_result = SpreadsheetParser.parse(csv_string)
-        self.assertEqual(test_result, [])
-
-    # Test that an ignored row is has ignore set to True
-    def test_parse_ignored_row(self):
-        csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
-        test_result = SpreadsheetParser.parse(csv_string)
-        test_result_attrs = []
-        for attr in dir(test_result[0]):
-            if not attr.startswith("__"):
-                test_result_attrs.append(attr)
-
-        expected_result = Transaction(
-            date(2023, 9, 4), "TIKICAT BAR", 1234, 12.66, Category.DINING, True
-        )
-        expected_result_attrs = []
-        for attr in dir(expected_result):
-            if not attr.startswith("__"):
-                expected_result_attrs.append(attr)
-
-        self.assertListEqual(test_result_attrs, expected_result_attrs)
+        mock_from_row = MagicMock(return_value=mock_transaction)
+        with patch("main.Transaction.from_row", mock_from_row):
+            test_result = SpreadsheetParser.parse(csv_string)
+            mock_from_row.assert_called_once_with(mock_row)
+            # Confirm test_result is a list of length 1 and contains a Transaction object
+            self.assertEqual(len(test_result), 1)
+            self.assertIsInstance(test_result[0], Transaction)
 
 
 # Test the calculate_expenses function
@@ -233,12 +307,17 @@ class TestCalculateExpenses(unittest.TestCase):
                     date(2023, 8, 31),
                     "MADCATS DANCE",
                     1313,
-                    17,
+                    17.0,
                     Category.OTHER,  # just for the OTHER category
-                    False,
+                    NotIgnoredFrom.NOT_IGNORED,
                 ),
                 Transaction(
-                    date(2023, 9, 1), "MADCATS DANCE", 1313, 17, Category.OTHER, False
+                    date(2023, 9, 1),
+                    "MADCATS DANCE",
+                    1313,
+                    17.0,
+                    Category.OTHER,
+                    NotIgnoredFrom.NOT_IGNORED,
                 ),
             ],
         )

@@ -159,28 +159,68 @@ class Category(Enum):
     OTHER = "R & T Shared"
 
 
+class NotIgnoredFrom(Enum):
+    NOT_IGNORED = str()
+
+
 class Transaction:
-    """
-    A class representing a single transaction.
+    def __init__(self, transact_date, name, account_number, amount, category, ignore):
+        # Make sure the date is a datetime.date object
+        if not isinstance(transact_date, date):
+            raise TypeError("date should be a datetime.date object")
+        # Make sure the name is a string
+        if not isinstance(name, str):
+            raise TypeError("name should be a string")
+        # Make sure the account number is an integer
+        if not isinstance(account_number, int):
+            raise TypeError("account_number should be an integer")
+        # Make sure the amount is a float
+        if not isinstance(amount, float):
+            raise TypeError("amount should be a float")
+        # Make sure the category is a Category object
+        if not isinstance(category, Category):
+            raise TypeError("category should be a Category object")
+        # Make sure the ignore is a NotIgnoredFrom object
+        if not isinstance(ignore, NotIgnoredFrom):
+            raise TypeError("ignore should be a NotIgnoredFrom object")
 
-    Attributes:
-    - date (str): The date of the transaction in the format YYYY-MM-DD.
-    - name (str): The name of the transaction.
-    - account_number (str): The account number associated with the transaction.
-    - amount (float): The amount of the transaction.
-    - category (str): The category of the transaction.
-    - ignore (bool): Whether or not to ignore the transaction during analysis.
-    """
-
-    def __init__(self, date, name, account_number, amount, category, ignore):
-        self.date = date
+        self.date = transact_date
         self.name = name
         self.account_number = account_number
         self.amount = amount
         self.category = category
         self.ignore = ignore
 
-    # Add a method from_row() that takes a row from a spreadsheet and returns a Transaction object
+    @staticmethod
+    def from_row(row):
+        """
+        Creates a Transaction object from a row in a spreadsheet.
+
+        Args:
+            row (dict): A dictionary representing a row in a spreadsheet.
+
+        Returns:
+            Transaction: A Transaction object created from the given row.
+        """
+        try:
+            transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
+            transaction_name = row["Name"]
+            transaction_account_number = int(row["Account Number"])
+            transaction_amount = float(row["Amount"])
+            transaction_category = Category(row["Category"])
+            transaction_ignore = NotIgnoredFrom(row["Ignored From"])
+
+            return Transaction(
+                transaction_date,
+                transaction_name,
+                transaction_account_number,
+                transaction_amount,
+                transaction_category,
+                transaction_ignore,
+            )
+        except (ValueError, KeyError) as e:
+            logger.warning(f"Invalid transaction data in row {row}: {str(e)}")
+            return None
 
 
 class Person:
@@ -285,7 +325,6 @@ class Summary:
         for transaction in parsed_transactions:
             if (
                 transaction.account_number in person.account_numbers
-                and not transaction.ignore
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):
@@ -313,26 +352,9 @@ class SpreadsheetParser:
         results = []
         reader = csv.DictReader(file_content.splitlines())
         for row in reader:
-            try:
-                transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
-                transaction_name = row["Name"]
-                transaction_account_number = int(row["Account Number"])
-                transaction_amount = float(row["Amount"])
-                transaction_category = Category(row["Category"])
-                transaction_ignore = bool(row["Ignored From"])
-
-                transaction = Transaction(
-                    transaction_date,
-                    transaction_name,
-                    transaction_account_number,
-                    transaction_amount,
-                    transaction_category,
-                    transaction_ignore,
-                )
+            transaction = Transaction.from_row(row)
+            if transaction:
                 results.append(transaction)
-            except (ValueError, KeyError) as e:
-                logger.warning(f"Invalid transaction data in row {row}: {str(e)}")
-                continue
         return results
 
 

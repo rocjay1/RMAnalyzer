@@ -187,30 +187,24 @@ class Transaction:
 
     def __init__(self, transact_date, name, account_number, amount, category, ignore):
         try:
-            # Make sure the date is a datetime.date object
             if not isinstance(transact_date, date):
                 raise TypeError(
                     f"date should be a datetime.date object, got {type(transact_date).__name__}"
                 )
-            # Make sure the name is a string
             if not isinstance(name, str):
                 raise TypeError(f"name should be a string, got {type(name).__name__}")
-            # Make sure the account number is an integer
             if not isinstance(account_number, int):
                 raise TypeError(
                     f"account_number should be an integer, got {type(account_number).__name__}"
                 )
-            # Make sure the amount is a float
             if not isinstance(amount, float):
                 raise TypeError(
                     f"amount should be a float, got {type(amount).__name__}"
                 )
-            # Make sure the category is a Category object
             if not isinstance(category, Category):
                 raise TypeError(
                     f"category should be a Category object, got {type(category).__name__}"
                 )
-            # Make sure the ignore is a NotIgnoredFrom object
             if not isinstance(ignore, NotIgnoredFrom):
                 raise TypeError(
                     f"ignore should be a NotIgnoredFrom object, got {type(ignore).__name__}"
@@ -586,7 +580,7 @@ def analyze_file(file_path):
 
 def lambda_handler(event, context):
     """
-    This function is the entry point for the AWS Lambda function. It is triggered by an S3 event 
+    This function is the entry point for the AWS Lambda function. It is triggered by an S3 event
     and analyzes the file that triggered the event.
 
     :param event: The S3 event that triggered the Lambda function.

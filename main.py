@@ -16,8 +16,6 @@ name, account number, amount, category, and whether or not to ignore the transac
 The script also defines a Person class, with attributes for the person's name, email,
 account numbers, and a list of transactions (if available).
 
-Usage: python Repos/RMAnalyzer/main.py s3://<bucket>/<key>
-
 Author: Rocco Davino
 """
 
@@ -61,7 +59,7 @@ def load_config(config=None):
     Loads the configuration file from an S3 bucket and returns it as a dictionary.
 
     Args:
-        config (dict): A dictionary containing the S3 bucket and key where the 
+        config (dict): A dictionary containing the S3 bucket and key where the
         configuration file is stored.
 
     Returns:
@@ -112,7 +110,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
     :param to_addresses: A list of email addresses that the email will be sent to.
     :param subject: The subject line of the email.
     :param html_body: The HTML body of the email.
-    :param text_body: The plain text body of the email. If not provided, 
+    :param text_body: The plain text body of the email. If not provided,
         the HTML body will be used as the text body.
     :return: The response from the SES service.
     :raises: botocore.exceptions.ClientError: If there was an error sending the email.
@@ -153,6 +151,7 @@ class Category(Enum):
     OTHER : str
         The category for other shared expenses.
     """
+
     DINING = "Dining & Drinks"
     GROCERIES = "Groceries"
     PETS = "Pets"
@@ -172,6 +171,7 @@ class Transaction:
     - category (str): The category of the transaction.
     - ignore (bool): Whether or not to ignore the transaction during analysis.
     """
+
     def __init__(self, date, name, account_number, amount, category, ignore):
         self.date = date
         self.name = name
@@ -180,12 +180,25 @@ class Transaction:
         self.category = category
         self.ignore = ignore
 
+    # Add a method from_row() that takes a row from a spreadsheet and returns a Transaction object
+
 
 class Person:
+    """
+    A class representing a person with a name, email, account numbers, and transactions.
+
+    Attributes:
+        name (str): The name of the person.
+        email (str): The email address of the person.
+        account_numbers (List[int]): A list of account numbers associated with the person.
+        transactions (List[Transaction]): A list of Transaction objects representing the person's 
+            transactions.
+    """
+
     def __init__(self, name, email, account_numbers, transactions=None):
         try:
             if not isinstance(name, str):
-                raise TypeError("name should be a string, got %s", type(name).__name__)
+                raise TypeError(f"name should be a string, got {type(name).__name__}")
             if not isinstance(email, str):
                 raise TypeError(f"email should be a string, got {type(email).__name__}")
             if not all(isinstance(num, int) for num in account_numbers):
@@ -199,14 +212,32 @@ class Person:
             self.email = email
             self.account_numbers = account_numbers
             self.transactions = transactions or []
-        except TypeError as e:
-            logger.error(f"Invalid person data: {str(e)}")
+        except TypeError as error:
+            logger.error("Invalid person data: %s", str(error))
             raise
 
     def add_transaction(self, transaction):
+        """
+        Adds a transaction to the list of transactions for this account.
+
+        Args:
+            transaction (Transaction): The transaction to add.
+        """
         self.transactions.append(transaction)
 
     def calculate_expenses(self, category=None):
+        """
+        Calculates the total expenses for the given category or for all 
+        categories if no category is specified.
+
+        Args:
+            category (str, optional): The category for which to calculate expenses. 
+                Defaults to None.
+
+        Returns:
+            float: The total expenses for the given category or for all categories 
+                if no category is specified.
+        """
         if category:
             return sum(t.amount for t in self.transactions if t.category == category)
         return sum(t.amount for t in self.transactions)

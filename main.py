@@ -7,7 +7,6 @@
 # Author: Rocco Davino
 
 
-import sys
 import logging
 from datetime import datetime, date
 import csv
@@ -205,7 +204,7 @@ class SpreadsheetParser:
                     transaction_account_number,
                     transaction_amount,
                     transaction_category,
-                    transaction_ignore
+                    transaction_ignore,
                 )
                 results.append(transaction)
             except (ValueError, KeyError) as e:

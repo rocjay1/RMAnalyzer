@@ -161,12 +161,14 @@ class Category(Enum):
 
 class NotIgnoredFrom(Enum):
     """
-    An enumeration representing the different types of objects that should not be ignored 
+    An enumeration representing the different types of objects that should not be ignored
     by the RMAnalyzer.
 
     Attributes:
         NOT_IGNORED (str): A string representing the type of object that should not be ignored.
     """
+
+    # Rows with an empty string in the Ignored From column should not be ignored
     NOT_IGNORED = str()
 
 
@@ -184,31 +186,45 @@ class Transaction:
     """
 
     def __init__(self, transact_date, name, account_number, amount, category, ignore):
-        # Make sure the date is a datetime.date object
-        if not isinstance(transact_date, date):
-            raise TypeError("date should be a datetime.date object")
-        # Make sure the name is a string
-        if not isinstance(name, str):
-            raise TypeError("name should be a string")
-        # Make sure the account number is an integer
-        if not isinstance(account_number, int):
-            raise TypeError("account_number should be an integer")
-        # Make sure the amount is a float
-        if not isinstance(amount, float):
-            raise TypeError("amount should be a float")
-        # Make sure the category is a Category object
-        if not isinstance(category, Category):
-            raise TypeError("category should be a Category object")
-        # Make sure the ignore is a NotIgnoredFrom object
-        if not isinstance(ignore, NotIgnoredFrom):
-            raise TypeError("ignore should be a NotIgnoredFrom object")
+        try:
+            # Make sure the date is a datetime.date object
+            if not isinstance(transact_date, date):
+                raise TypeError(
+                    f"date should be a datetime.date object, got {type(transact_date).__name__}"
+                )
+            # Make sure the name is a string
+            if not isinstance(name, str):
+                raise TypeError(f"name should be a string, got {type(name).__name__}")
+            # Make sure the account number is an integer
+            if not isinstance(account_number, int):
+                raise TypeError(
+                    f"account_number should be an integer, got {type(account_number).__name__}"
+                )
+            # Make sure the amount is a float
+            if not isinstance(amount, float):
+                raise TypeError(
+                    f"amount should be a float, got {type(amount).__name__}"
+                )
+            # Make sure the category is a Category object
+            if not isinstance(category, Category):
+                raise TypeError(
+                    f"category should be a Category object, got {type(category).__name__}"
+                )
+            # Make sure the ignore is a NotIgnoredFrom object
+            if not isinstance(ignore, NotIgnoredFrom):
+                raise TypeError(
+                    f"ignore should be a NotIgnoredFrom object, got {type(ignore).__name__}"
+                )
 
-        self.date = transact_date
-        self.name = name
-        self.account_number = account_number
-        self.amount = amount
-        self.category = category
-        self.ignore = ignore
+            self.date = transact_date
+            self.name = name
+            self.account_number = account_number
+            self.amount = amount
+            self.category = category
+            self.ignore = ignore
+        except TypeError as ex:
+            logger.error("Invalid transaction data: %s", ex)
+            raise
 
     @staticmethod
     def from_row(row):
@@ -250,26 +266,30 @@ class Person:
         name (str): The name of the person.
         email (str): The email address of the person.
         account_numbers (List[int]): A list of account numbers associated with the person.
-        transactions (List[Transaction]): A list of Transaction objects representing the person's 
+        transactions (List[Transaction]): A list of Transaction objects representing the person's
             transactions.
     """
 
     def __init__(self, name, email, account_numbers, transactions=None):
-        if not isinstance(name, str):
-            raise TypeError(f"name should be a string, got {type(name).__name__}")
-        if not isinstance(email, str):
-            raise TypeError(f"email should be a string, got {type(email).__name__}")
-        if not all(isinstance(num, int) for num in account_numbers):
-            raise TypeError("account_numbers should be a list of integers")
-        if transactions and not all(
-            isinstance(t, Transaction) for t in transactions
-        ):
-            raise TypeError("transactions should be a list of Transaction objects")
+        try:
+            if not isinstance(name, str):
+                raise TypeError(f"name should be a string, got {type(name).__name__}")
+            if not isinstance(email, str):
+                raise TypeError(f"email should be a string, got {type(email).__name__}")
+            if not all(isinstance(num, int) for num in account_numbers):
+                raise TypeError("account_numbers should be a list of integers")
+            if transactions and not all(
+                isinstance(t, Transaction) for t in transactions
+            ):
+                raise TypeError("transactions should be a list of Transaction objects")
 
-        self.name = name
-        self.email = email
-        self.account_numbers = account_numbers
-        self.transactions = transactions or []
+            self.name = name
+            self.email = email
+            self.account_numbers = account_numbers
+            self.transactions = transactions or []
+        except TypeError as ex:
+            logger.error("Invalid person data: %s", ex)
+            raise
 
     def add_transaction(self, transaction):
         """
@@ -282,15 +302,15 @@ class Person:
 
     def calculate_expenses(self, category=None):
         """
-        Calculates the total expenses for the given category or for all 
+        Calculates the total expenses for the given category or for all
         categories if no category is specified.
 
         Args:
-            category (str, optional): The category for which to calculate expenses. 
+            category (str, optional): The category for which to calculate expenses.
                 Defaults to None.
 
         Returns:
-            float: The total expenses for the given category or for all categories 
+            float: The total expenses for the given category or for all categories
                 if no category is specified.
         """
         if category:
@@ -299,10 +319,33 @@ class Person:
 
 
 class Summary:
-    def __init__(self, date, config=None):
+    """
+    A class representing a summary of transaction data for a given date.
+
+    Attributes:
+        date (datetime.date): The date of the summary.
+        owner (str): The owner of the transaction data.
+        people (list): A list of `Person` objects representing the people involved
+            in the transactions.
+
+    Methods:
+        __init__(self, summary_date, config=None): Initializes a new `Summary` object.
+        initialize_people(self, people_config): Initializes a list of `Person` objects based on the
+            provided people configuration.
+        add_transactions_from_spreadsheet(self, spreadsheet_content): Parses transaction data from a
+            spreadsheet and adds it to the analyzer.
+        add_persons_transactions(self, parsed_transactions, person): Adds a list of parsed
+            transactions to a given person's account.
+        add_transactions(self, parsed_transactions): Adds parsed transactions to each person's
+            transaction history.
+        calculate_2_person_difference(self, person1, person2, category=None): Calculates the
+            difference in expenses between two people for a given category.
+    """
+
+    def __init__(self, summary_date, config=None):
         if not config:
             config = load_config()
-        self.date = date
+        self.date = summary_date
 
         try:
             self.owner = config["Owner"]
@@ -318,6 +361,20 @@ class Summary:
             raise
 
     def initialize_people(self, people_config):
+        """
+        Initializes a list of Person objects based on the provided people configuration.
+
+        Args:
+            people_config (list): A list of dictionaries containing the configuration
+                for each person.
+
+        Returns:
+            list: A list of Person objects initialized with the provided configuration.
+
+        Raises:
+            TypeError: If the provided people configuration is not a list.
+            KeyError: If the provided people configuration is missing a required key.
+        """
         try:
             return [
                 Person(
@@ -328,42 +385,103 @@ class Summary:
                 )
                 for p in people_config
             ]
-        except (TypeError, KeyError) as e:
-            logger.error(f"Invalid people configuration: {str(e)}")
+        except (TypeError, KeyError) as ex:
+            logger.error("Invalid people configuration: %s", ex)
             raise
 
     def add_transactions_from_spreadsheet(self, spreadsheet_content):
+        """
+        Parses transaction data from a spreadsheet and adds it to the analyzer.
+
+        Args:
+            spreadsheet_content (str): The contents of the spreadsheet to parse.
+
+        Returns:
+            None
+        """
         parsed_transactions = SpreadsheetParser.parse(spreadsheet_content)
         self.add_transactions(parsed_transactions)
 
     def add_persons_transactions(self, parsed_transactions, person):
+        """
+        Adds a list of parsed transactions to a given person's account.
+
+        :param parsed_transactions: A list of `Transaction` objects to add to the person's account.
+        :type parsed_transactions: list[Transaction]
+        :param person: The `Person` object to add the transactions to.
+        :type person: Person
+        """
         for transaction in parsed_transactions:
             if (
-                transaction.account_number in person.account_numbers
+                transaction.account_number
+                in person.account_numbers
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):
                 person.add_transaction(transaction)
 
     def add_transactions(self, parsed_transactions):
+        """
+        Adds parsed transactions to each person's transaction history.
+
+        :param parsed_transactions: A list of dictionaries containing parsed transaction data.
+        """
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_2_person_difference(self, person1, person2, category=None):
+        """
+        Calculates the difference in expenses between two people for a given category.
+
+        Args:
+            person1 (Person): The first person to compare.
+            person2 (Person): The second person to compare.
+            category (str, optional): The category of expenses to compare.
+                If None, all expenses are compared.
+
+        Returns:
+            float: The difference in expenses between person1 and person2 for the given category.
+        """
         return person1.calculate_expenses(category) - person2.calculate_expenses(
             category
         )
 
 
 class SpreadsheetSummary(Summary):
-    def __init__(self, date, spreadsheet_content, config=None):
-        super().__init__(date, config)
+    """
+    A class representing a summary of transactions from a spreadsheet.
+
+    Attributes:
+        date (datetime): The date of the summary.
+        spreadsheet_content (list): A list of dictionaries representing the spreadsheet content.
+        config (dict, optional): A dictionary of configuration options.
+
+    Methods:
+        __init__(self, date, spreadsheet_content, config=None): Initializes a new instance of the
+            SpreadsheetSummary class.
+    """
+
+    def __init__(self, summary_date, spreadsheet_content, config=None):
+        super().__init__(summary_date, config)
         super().add_transactions_from_spreadsheet(spreadsheet_content)
 
 
 class SpreadsheetParser:
+    """
+    A class for parsing CSV files and returning a list of Transaction objects.
+    """
+
     @staticmethod
     def parse(file_content):
+        """
+        Parses a CSV file and returns a list of Transaction objects.
+
+        Args:
+            file_content (str): The contents of the CSV file as a string.
+
+        Returns:
+            list: A list of Transaction objects parsed from the CSV file.
+        """
         results = []
         reader = csv.DictReader(file_content.splitlines())
         for row in reader:
@@ -374,8 +492,24 @@ class SpreadsheetParser:
 
 
 class EmailGenerator:
+    """
+    A class for generating HTML emails containing a summary of expenses for each person in a given
+    summary object.
+    """
+
     @staticmethod
     def generate_summary_email(summary):
+        """
+        Generates an HTML email containing a summary of expenses for each person in the given
+        summary object.
+
+        Args:
+            summary (Summary): The summary object containing the data to be included in the email.
+
+        Returns:
+            Tuple[str, List[str], str, str]: A tuple containing the email sender, recipients,
+            subject, and HTML body.
+        """
         html = """<html>
         <head>
             <style>
@@ -431,6 +565,16 @@ class EmailGenerator:
 
 # MAIN
 def analyze_file(file_path):
+    """
+    Analyzes a file located at the given S3 file path, generates a summary of its contents,
+    and sends an email with the summary to a list of recipients.
+
+    Args:
+        file_path (str): The S3 file path of the file to be analyzed.
+
+    Returns:
+        None
+    """
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary = SpreadsheetSummary(date.today(), file_content)
@@ -441,6 +585,15 @@ def analyze_file(file_path):
 
 
 def lambda_handler(event, context):
+    """
+    This function is the entry point for the AWS Lambda function. It is triggered by an S3 event 
+    and analyzes the file that triggered the event.
+
+    :param event: The S3 event that triggered the Lambda function.
+    :type event: dict
+    :param context: The context object for the Lambda function.
+    :type context: object
+    """
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]
     file_path = f"s3://{bucket}/{key}"

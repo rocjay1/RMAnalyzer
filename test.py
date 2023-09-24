@@ -46,6 +46,130 @@ CONFIG = {
 GARBAGE = "***THIS IS A GARBAGE SPREADSHEET***"
 
 
+# Test the Transaction class constructor
+class TestTransactionConstructor(unittest.TestCase):
+    def test_constructor(self):
+        # Test valid input
+        transact_date = date(2022, 1, 1)
+        name = "John Doe"
+        account_number = 123456
+        amount = 100.0
+        category = Category("Groceries")
+        ignore = NotIgnoredFrom("")
+        transaction = Transaction(
+            transact_date, name, account_number, amount, category, ignore
+        )
+        self.assertEqual(transaction.date, transact_date)
+        self.assertEqual(transaction.name, name)
+        self.assertEqual(transaction.account_number, account_number)
+        self.assertEqual(transaction.amount, amount)
+        self.assertEqual(transaction.category, category)
+        self.assertEqual(transaction.ignore, ignore)
+
+        # Test invalid input
+        with self.assertRaises(TypeError):
+            Transaction(
+                "2022-01-01",
+                "John Doe",
+                123456,
+                100.0,
+                Category("Groceries"),
+                NotIgnoredFrom(""),
+            )
+        with self.assertRaises(TypeError):
+            Transaction(
+                date(2022, 1, 1),
+                123456,
+                123456,
+                100.0,
+                Category("Groceries"),
+                NotIgnoredFrom(""),
+            )
+        with self.assertRaises(TypeError):
+            Transaction(
+                date(2022, 1, 1),
+                "John Doe",
+                "123456",
+                100.0,
+                Category("Groceries"),
+                NotIgnoredFrom(""),
+            )
+        with self.assertRaises(TypeError):
+            Transaction(
+                date(2022, 1, 1),
+                "John Doe",
+                123456,
+                "100.0",
+                Category("Groceries"),
+                NotIgnoredFrom(""),
+            )
+        with self.assertRaises(TypeError):
+            Transaction(
+                date(2022, 1, 1),
+                "John Doe",
+                123456,
+                100.0,
+                "Groceries",
+                NotIgnoredFrom(""),
+            )
+        with self.assertRaises(TypeError):
+            Transaction(
+                date(2022, 1, 1),
+                "John Doe",
+                123456,
+                100.0,
+                Category("Groceries"),
+                "budget",
+            )
+
+
+# Test the Person class constructor
+class TestPersonConstructor(unittest.TestCase):
+    def test_constructor(self):
+        # Test valid input
+        name = "John Doe"
+        email = "johndoe@example.com"
+        account_numbers = [123456, 789012]
+        transactions = [
+            Transaction(
+                date(2022, 1, 1),
+                "John Doe",
+                123456,
+                100.0,
+                Category("Groceries"),
+                NotIgnoredFrom(""),
+            ),
+            Transaction(
+                date(2022, 1, 2),
+                "Jane Doe",
+                789012,
+                50.0,
+                Category("Dining & Drinks"),
+                NotIgnoredFrom(""),
+            ),
+        ]
+        person = Person(name, email, account_numbers, transactions)
+        self.assertEqual(person.name, name)
+        self.assertEqual(person.email, email)
+        self.assertEqual(person.account_numbers, account_numbers)
+        self.assertEqual(person.transactions, transactions)
+
+        # Test invalid input
+        with self.assertRaises(TypeError):
+            Person(123456, "johndoe@example.com", [123456, 789012], transactions)
+        with self.assertRaises(TypeError):
+            Person("John Doe", 123456, [123456, 789012], transactions)
+        with self.assertRaises(TypeError):
+            Person("John Doe", "johndoe@example.com", [123456, "789012"], transactions)
+        with self.assertRaises(TypeError):
+            Person(
+                "John Doe",
+                "johndoe@example.com",
+                [123456, 789012],
+                ["invalid transaction"],
+            )
+
+
 # Test the Summary class constructor with different types of config
 class TestSummaryConstructor(unittest.TestCase):
     def setUp(self):
@@ -209,6 +333,24 @@ class TestFromRow(unittest.TestCase):
             "Category": "Dining & Drinks",
             "Note": "",
             "Ignored From": "budget",
+            "Tax Deductible": "",
+        }
+        test_result = Transaction.from_row(row)
+        self.assertIsNone(test_result)
+
+        row = {
+            "Date": "2023-09-04",
+            "Original Date": "2023-09-04",
+            "Account Type": "Credit Card",
+            "Account Name": "CREDIT CARD",
+            "Account Number": "1234",
+            "Institution Name": "Chase",
+            "Custom Name": "",
+            "Amount": "12.66",
+            "Description": "TIKICAT BAR",
+            "Category": "Dining & Drinks",
+            "Note": "",
+            "Ignored From": "",
             "Tax Deductible": "",
         }
         test_result = Transaction.from_row(row)

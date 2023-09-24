@@ -160,10 +160,29 @@ class Category(Enum):
 
 
 class NotIgnoredFrom(Enum):
+    """
+    An enumeration representing the different types of objects that should not be ignored 
+    by the RMAnalyzer.
+
+    Attributes:
+        NOT_IGNORED (str): A string representing the type of object that should not be ignored.
+    """
     NOT_IGNORED = str()
 
 
 class Transaction:
+    """
+    Represents a financial transaction.
+
+    Attributes:
+        date (datetime.date): The date of the transaction.
+        name (str): The name of the transaction.
+        account_number (int): The account number associated with the transaction.
+        amount (float): The amount of the transaction.
+        category (Category): The category of the transaction.
+        ignore (NotIgnoredFrom): The source of the transaction.
+    """
+
     def __init__(self, transact_date, name, account_number, amount, category, ignore):
         # Make sure the date is a datetime.date object
         if not isinstance(transact_date, date):
@@ -218,8 +237,8 @@ class Transaction:
                 transaction_category,
                 transaction_ignore,
             )
-        except (ValueError, KeyError) as e:
-            logger.warning(f"Invalid transaction data in row {row}: {str(e)}")
+        except (ValueError, KeyError) as ex:
+            logger.warning("Invalid transaction data in row %s: %s", row, ex)
             return None
 
 
@@ -236,25 +255,21 @@ class Person:
     """
 
     def __init__(self, name, email, account_numbers, transactions=None):
-        try:
-            if not isinstance(name, str):
-                raise TypeError(f"name should be a string, got {type(name).__name__}")
-            if not isinstance(email, str):
-                raise TypeError(f"email should be a string, got {type(email).__name__}")
-            if not all(isinstance(num, int) for num in account_numbers):
-                raise TypeError("account_numbers should be a list of integers")
-            if transactions and not all(
-                isinstance(t, Transaction) for t in transactions
-            ):
-                raise TypeError("transactions should be a list of Transaction objects")
+        if not isinstance(name, str):
+            raise TypeError(f"name should be a string, got {type(name).__name__}")
+        if not isinstance(email, str):
+            raise TypeError(f"email should be a string, got {type(email).__name__}")
+        if not all(isinstance(num, int) for num in account_numbers):
+            raise TypeError("account_numbers should be a list of integers")
+        if transactions and not all(
+            isinstance(t, Transaction) for t in transactions
+        ):
+            raise TypeError("transactions should be a list of Transaction objects")
 
-            self.name = name
-            self.email = email
-            self.account_numbers = account_numbers
-            self.transactions = transactions or []
-        except TypeError as error:
-            logger.error("Invalid person data: %s", str(error))
-            raise
+        self.name = name
+        self.email = email
+        self.account_numbers = account_numbers
+        self.transactions = transactions or []
 
     def add_transaction(self, transaction):
         """

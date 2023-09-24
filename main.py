@@ -1,10 +1,25 @@
-# Desc: This script is used to generate a monthly summary of expenses from a spreadsheet.
-#       It is meant to be run as an AWS Lambda function triggered by an S3 event.
-#       The spreadsheet should be an export from Rocket Money.
-#       The configuration file should be stored in an S3 bucket.
-#       The Lambda function should have access to the S3 bucket and SES.
-# Usage: python Repos/RMAnalyzer/main.py s3://<bucket>/<key>
-# Author: Rocco Davino
+"""
+This script is used to generate a monthly summary of expenses from a spreadsheet.
+It is meant to be run as an AWS Lambda function triggered by an S3 event.
+The spreadsheet should be an export from Rocket Money.
+The configuration file should be stored in an S3 bucket.
+The Lambda function should have access to the S3 bucket and SES.
+
+The script defines several helper functions for loading configuration files from S3,
+reading files from S3, and sending emails using Amazon SES. It also defines two classes:
+Category and Transaction.
+
+Category is an enumeration representing the different categories of expenses, and
+Transaction is a class representing a single transaction, with attributes for the date,
+name, account number, amount, category, and whether or not to ignore the transaction.
+
+The script also defines a Person class, with attributes for the person's name, email,
+account numbers, and a list of transactions (if available).
+
+Usage: python Repos/RMAnalyzer/main.py s3://<bucket>/<key>
+
+Author: Rocco Davino
+"""
 
 
 import logging
@@ -29,29 +44,79 @@ CONFIG = {"Bucket": "rm-analyzer-config", "Key": "config.json"}
 
 # HELPER FUNCTIONS
 def format_money_helper(num):
+    """
+    Formats a given number as a string in the format specified by the MONEY_FORMAT constant.
+
+    Args:
+        num (float): The number to format.
+
+    Returns:
+        str: The formatted string.
+    """
     return MONEY_FORMAT.format(num)
 
 
-def load_config(config=CONFIG):
+def load_config(config=None):
+    """
+    Loads the configuration file from an S3 bucket and returns it as a dictionary.
+
+    Args:
+        config (dict): A dictionary containing the S3 bucket and key where the 
+        configuration file is stored.
+
+    Returns:
+        dict: A dictionary containing the configuration settings.
+
+    Raises:
+        ClientError: If there is an error accessing the S3 bucket.
+        JSONDecodeError: If there is an error decoding the JSON configuration file.
+    """
+    if config is None:
+        config = CONFIG
     try:
         file_content = read_s3_file(config["Bucket"], config["Key"])
         return json.loads(file_content)
-    except (exceptions.ClientError, json.JSONDecodeError) as e:
-        logger.error(f"Error loading config: {str(e)}")
+    except (exceptions.ClientError, json.JSONDecodeError) as ex:
+        logger.error("Error loading config: %s", ex)
         raise
 
 
 def read_s3_file(bucket, key):
+    """
+    Reads a file from an S3 bucket.
+
+    Args:
+        bucket (str): The name of the S3 bucket.
+        key (str): The key of the file to read.
+
+    Returns:
+        str: The contents of the file as a string.
+
+    Raises:
+        botocore.exceptions.ClientError: If there was an error reading the file.
+    """
     s3 = boto3.client("s3")
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         return response["Body"].read().decode("utf-8")
-    except exceptions.ClientError as e:
-        logger.error(f"Error reading S3 file: {str(e)}")
+    except exceptions.ClientError as ex:
+        logger.error("Error reading S3 file: %s", ex)
         raise
 
 
 def send_email(source, to_addresses, subject, html_body, text_body=None):
+    """
+    Sends an email using Amazon SES (Simple Email Service).
+
+    :param source: The email address that the email will be sent from.
+    :param to_addresses: A list of email addresses that the email will be sent to.
+    :param subject: The subject line of the email.
+    :param html_body: The HTML body of the email.
+    :param text_body: The plain text body of the email. If not provided, 
+        the HTML body will be used as the text body.
+    :return: The response from the SES service.
+    :raises: botocore.exceptions.ClientError: If there was an error sending the email.
+    """
     ses = boto3.client("ses", region_name="us-east-1")
     if not text_body:
         text_body = html_body
@@ -65,13 +130,29 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
             },
         )
         return response
-    except exceptions.ClientError as e:
-        logger.error(f"Error sending email: {str(e)}")
+    except exceptions.ClientError as ex:
+        logger.error("Error sending email: %s", ex)
         raise
 
 
 # CLASSES
 class Category(Enum):
+    """
+    A class representing the different categories of expenses.
+
+    Attributes
+    ----------
+    DINING : str
+        The category for dining and drinks expenses.
+    GROCERIES : str
+        The category for groceries expenses.
+    PETS : str
+        The category for pets expenses.
+    BILLS : str
+        The category for bills and utilities expenses.
+    OTHER : str
+        The category for other shared expenses.
+    """
     DINING = "Dining & Drinks"
     GROCERIES = "Groceries"
     PETS = "Pets"
@@ -80,6 +161,17 @@ class Category(Enum):
 
 
 class Transaction:
+    """
+    A class representing a single transaction.
+
+    Attributes:
+    - date (str): The date of the transaction in the format YYYY-MM-DD.
+    - name (str): The name of the transaction.
+    - account_number (str): The account number associated with the transaction.
+    - amount (float): The amount of the transaction.
+    - category (str): The category of the transaction.
+    - ignore (bool): Whether or not to ignore the transaction during analysis.
+    """
     def __init__(self, date, name, account_number, amount, category, ignore):
         self.date = date
         self.name = name
@@ -93,7 +185,7 @@ class Person:
     def __init__(self, name, email, account_numbers, transactions=None):
         try:
             if not isinstance(name, str):
-                raise TypeError(f"name should be a string, got {type(name).__name__}")
+                raise TypeError("name should be a string, got %s", type(name).__name__)
             if not isinstance(email, str):
                 raise TypeError(f"email should be a string, got {type(email).__name__}")
             if not all(isinstance(num, int) for num in account_numbers):

@@ -289,9 +289,4 @@ def lambda_handler(event, context):
 
 
 if __name__ == "__main__":
-    # Check if file path is provided
-    if len(sys.argv) != 2:
-        logger.error("Please provide a file path.")
-        sys.exit(1)
-
-    analyze_file(sys.argv[1])
+    pass

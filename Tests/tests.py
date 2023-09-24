@@ -4,17 +4,28 @@
 
 from main import *
 import unittest
+from unittest.mock import patch
+from unittest.mock import MagicMock
 import boto3
 from botocore import exceptions
 from moto import mock_s3, mock_ses
 from datetime import date
 
 
+CONFIG_PATH = "tests/config.json"
+CSV_PATH = "tests/valid.csv"
+
 # Helper function to setup mock S3 bucket
 def setup_mock_s3(bucket_name, key, data):
     s3 = boto3.client("s3")
     s3.create_bucket(Bucket=bucket_name)
     s3.put_object(Bucket=bucket_name, Key=key, Body=data)
+
+
+# Helper function to setup mock SES
+def setup_mock_ses():
+    ses = boto3.client("ses", region_name="us-east-1")
+    ses.verify_email_identity(EmailAddress="bebas@gmail.com")
 
 
 # Helper function to read local file
@@ -27,7 +38,7 @@ class TestSummary(unittest.TestCase):
     def setUp(self):
         self.bucket = "rm-analyzer-config"
         self.key = "config.json"
-        self.data = read_local_file("tests/config.json")
+        self.data = read_local_file(CONFIG_PATH)
 
     @mock_s3
     def test_summary_constructor_from_config(self):
@@ -62,13 +73,13 @@ class TestSpreadsheetSummary(unittest.TestCase):
     def setUp(self):
         self.bucket = "test-bucket"
         self.key = "test-key"
-        self.data = read_local_file("tests/config.json")
+        self.data = read_local_file(CONFIG_PATH)
 
     @mock_s3
     def test_spreadsheet_summary_constructor(self):
         setup_mock_s3(self.bucket, self.key, self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
-        spreadsheet_content = read_local_file("tests/valid.csv")
+        spreadsheet_content = read_local_file(CSV_PATH)
 
         summary = SpreadsheetSummary(
             date.today(),
@@ -131,7 +142,7 @@ class TestParse(unittest.TestCase):
         self.assertEqual(test_result, [])
 
     def test_parse_good_spreadsheet(self):
-        good_spreadsheet_content = read_local_file("tests/valid.csv")
+        good_spreadsheet_content = read_local_file(CSV_PATH)
         test_result = SpreadsheetParser.parse(good_spreadsheet_content)
         correct_result = [
             Transaction(
@@ -205,13 +216,13 @@ class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
         self.bucket = "rm-analyzer-config"
         self.key = "config.json"
-        self.data = read_local_file("tests/config.json")
+        self.data = read_local_file(CONFIG_PATH)
 
     @mock_s3
     def test_calculate_2_person_difference(self):
         setup_mock_s3(self.bucket, self.key, self.data)
         config = {"Bucket": self.bucket, "Key": self.key}
-        spreadsheet_content = read_local_file("tests/valid.csv")
+        spreadsheet_content = read_local_file(CSV_PATH)
         summary = SpreadsheetSummary(
             date.today(),
             spreadsheet_content,
@@ -249,9 +260,7 @@ class TestReadS3File(unittest.TestCase):
 class TestSendEmail(unittest.TestCase):
     @mock_ses
     def test_send_email(self):
-        ses = boto3.client("ses", region_name="us-east-1")
-        # Moto's mock SES requires a verified identity (email or domain)
-        ses.verify_email_identity(EmailAddress="bebas@gmail.com")
+        setup_mock_ses()
         source = "bebas@gmail.com"
         to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
         subject = "Test"
@@ -301,6 +310,108 @@ class TestLoadConfig(unittest.TestCase):
         config = {"Bucket": self.bucket, "Key": self.key}
         with self.assertRaises(json.decoder.JSONDecodeError):
             load_config(config)
+
+
+# Test EmailGenerator
+# Test generate_summary_email on a valid summary
+# The result should be a tuple matching
+#   summary.owner,[p.email for p in summary.people],f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
+#   html
+# where html starts with "<html>" and ends with "</html>"
+class TestEmailGenerator(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "rm-analyzer-config"
+        self.key = "config.json"
+        self.data = read_local_file(CONFIG_PATH)
+
+    @mock_s3
+    def test_generate_summary_email(self):
+        setup_mock_s3(self.bucket, self.key, self.data)
+        config = {"Bucket": self.bucket, "Key": self.key}
+        spreadsheet_content = read_local_file(CSV_PATH)
+        summary = SpreadsheetSummary(
+            date.today(),
+            spreadsheet_content,
+            config=load_config(config),
+        )
+        result = EmailGenerator.generate_summary_email(summary)
+        self.assertEqual(result[0], summary.owner)
+        self.assertEqual(result[1], [p.email for p in summary.people])
+        self.assertEqual(
+            result[2],
+            f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
+        )
+        self.assertTrue(result[3].startswith("<html>"))
+        self.assertTrue(result[3].endswith("</html>"))
+
+
+# Test analyze_file
+# Already tested most of the functionality in other tests
+# Just need to confirm the various functions are called
+# Also test 
+#   bucket, key = file_path.replace("s3://", "").split("/", 1)
+# On a path like "s3://test-bucket/test-key" sets 
+# bucket = "test-bucket" and key = "test-key"
+# Since send_email called within analyze_file uses ses.send_email, mock_ses must be used
+class TestAnalyzeFile(unittest.TestCase):
+    def test_analyze_file(self):
+        # Mock the function and classes being used in the function
+        mock_read_s3_file = MagicMock()
+        mock_spreadsheet_summary = MagicMock()
+        mock_email_generator = MagicMock()
+        mock_send_email = MagicMock()
+
+        file_path = "s3://some_bucket/some_key"
+        mock_file_content = "mocked_file_content"
+        mock_summary = "mocked_summary"
+        mock_source = "mocked_source"
+        mock_to_addresses = "mocked_to_addresses"
+        mock_subject = "mocked_subject"
+        mock_html_body = "mocked_html_body"
+        mock_email_generator.generate_summary_email.return_value = (
+                mock_source, 
+                mock_to_addresses, 
+                mock_subject, 
+                mock_html_body
+            )
+        # Use patch to replace the real function/class with our mocks
+        with patch('main.read_s3_file', mock_read_s3_file), \
+            patch('main.SpreadsheetSummary', mock_spreadsheet_summary), \
+            patch('main.EmailGenerator', mock_email_generator), \
+            patch('main.send_email', mock_send_email):
+
+            mock_read_s3_file.return_value = mock_file_content
+            mock_spreadsheet_summary.return_value = mock_summary
+
+            analyze_file(file_path)
+
+            # Assert the function and classes were called with the expected arguments
+            mock_read_s3_file.assert_called_once_with("some_bucket", "some_key")
+            mock_spreadsheet_summary.assert_called_once_with(date.today(), mock_file_content)
+            mock_email_generator.generate_summary_email.assert_called_once_with(mock_summary)
+            mock_send_email.assert_called_once_with(mock_source, mock_to_addresses, mock_subject, mock_html_body)
+
+
+class TestLambdaHandler(unittest.TestCase):
+    def test_lambda_handler(self):
+        mock_analyze_file = MagicMock()
+        event = {
+            "Records": [
+                {
+                    "s3": {
+                        "bucket": {
+                            "name": "test-bucket"
+                        },
+                        "object": {
+                            "key": "test-key"
+                        }
+                    }
+                }
+            ]
+        }
+        with patch('main.analyze_file', mock_analyze_file):
+            lambda_handler(event, None)
+            mock_analyze_file.assert_called_once_with("s3://test-bucket/test-key")
 
 
 def main():

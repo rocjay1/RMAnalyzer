@@ -49,23 +49,36 @@ class SpreadsheetAdditionHandler(FileSystemEventHandler):
             logger.info('File %s failed to upload to S3', event.src_path)
 
 
-def main():
-    # Path to directory to be monitored
-    path = sys.argv[1] if len(sys.argv) > 1 else '.'
-
+# Start observer consisting of event handler and observer
+# Path is the directory to watch
+# Return a pointer to the observer so it can be stopped
+def start_directory_observer(path):
+    logger.info('Starting observer on directory %s', path)
     # Create observer and event handler
     observer = Observer()
     event_handler = SpreadsheetAdditionHandler()
-
     # Schedule the observer to watch the directory
     observer.schedule(event_handler, path, recursive=False)
-
     # Start the observer
     observer.start()
+    return observer
 
-    try:
-        while observer.is_alive():
-            observer.join(1)
-    finally:
+
+# Stop the observer
+def stop_directory_observer(observer):
+    if observer.is_alive():
+        logger.info('Stopping observer')
         observer.stop()
         observer.join()
+
+
+if __name__ == "__main__":
+    path = sys.argv[1] if len(sys.argv) > 1 else '.'
+    # Start the observer
+    observer = start_directory_observer(path)
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        stop_directory_observer(observer)
+    logger.info('Done')

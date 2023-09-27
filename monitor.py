@@ -32,7 +32,7 @@ def upload_to_s3(file_name, bucket, object_name=None):
     try:
         response = s3_client.upload_file(file_name, bucket, object_name)
     except ClientError as e:
-        logging.error(e)
+        logger.error(e)
         return False
     return True
 
@@ -41,8 +41,12 @@ def upload_to_s3(file_name, bucket, object_name=None):
 class SpreadsheetAdditionHandler(FileSystemEventHandler):
     # When the file is dropped into the directory trigger the S3 upload 
     def on_created(self, event):
-        logger.info(f'File {event.src_path} added to directory')
-        upload_to_s3(event.src_path)
+        logger.info('File %s added to directory', event.src_path)
+        result = upload_to_s3(event.src_path)
+        if result:
+            logger.info('File %s uploaded to S3', event.src_path)
+        else:
+            logger.info('File %s failed to upload to S3', event.src_path)
 
 
 def main():

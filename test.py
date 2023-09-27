@@ -1,3 +1,4 @@
+# pylint: disable-all
 # Desc: Unit tests for RMAnalyzer
 # Author: Rocco Davino
 

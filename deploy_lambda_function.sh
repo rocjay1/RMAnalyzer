@@ -1,11 +1,12 @@
 #!/usr/bin/env zsh
 # Desc: Deploys the AWS Lambda function to AWS Lambda.
-# Assumes:
+# Assumptions:
 #   - The AWS CLI is installed and configured
 #   - The AWS Lambda function has been created and configured
 #   - All the necessary files are in the same directory as this script (which is the case if you cloned the repo)
 # Author: Rocco Davino
 # Usage: ./deploy_lambda_function.sh
+# Notes: Make the script executable with chmod +x deploy_lambda_function.sh
 
 # Get the directory path of the current script
 DIR_PATH="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
@@ -24,7 +25,7 @@ if [[ ! -f "$FILE_NAME" ]]; then
 fi
 
 # Zip the file
-zip "$ZIP_NAME" "$FILE_NAME"
+zip -FS "$ZIP_NAME" "$FILE_NAME"
 
 # Check the success of the ZIP operation
 if [[ $? -eq 0 ]]; then

@@ -1,3 +1,4 @@
+# pylint: disable-all
 # Desc: Deployment script to update AWS Lambda function
 # Author: Rocco Davino
 # Usage: python3 Repos/RMAnalyzer/deploy.py -z -d

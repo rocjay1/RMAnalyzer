@@ -1,4 +1,7 @@
 #!/usr/bin/env zsh
+# Desc: Copies a CSV file to S3
+# Author: Rocco Davino
+# Usage: ~/Scripts/copy_to_s3.sh <CSV name>
 
 # Check if an argument is provided
 if [ "$#" -ne 1 ]; then

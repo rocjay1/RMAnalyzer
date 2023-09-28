@@ -1,12 +1,12 @@
 #!/usr/bin/env zsh
-# Desc: Deploys the AWS Lambda function to AWS Lambda.
+# Desc: Updates the AWS Lambda function code.
 # Assumptions:
 #   - The AWS CLI is installed and configured
 #   - The AWS Lambda function has been created and configured
 #   - All the necessary files are in the same directory as this script (which is the case if you cloned the repo)
 # Author: Rocco Davino
-# Usage: ./deploy_lambda_function.sh
-# Notes: Make the script executable with chmod +x deploy_lambda_function.sh
+# Usage: ./update_function.sh
+# Notes: Make the script executable with chmod +x update_function.sh
 
 # Get the directory path of the current script
 DIR_PATH="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"

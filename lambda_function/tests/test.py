@@ -11,26 +11,7 @@ from unittest.mock import patch
 import boto3
 from botocore import exceptions
 from moto import mock_s3, mock_ses
-from main import (
-    Summary,
-    Person,
-    Transaction,
-    Category,
-    load_config,
-    SpreadsheetSummary,
-    SpreadsheetParser,
-    DISPLAY_DATE_FORMAT,
-    EmailGenerator,
-    send_email,
-    analyze_file,
-    lambda_handler,
-    read_s3_file,
-    DATE_FORMAT,
-    MONEY_FORMAT,
-    CONFIG,
-    format_money_helper,
-    NotIgnoredFrom,
-)
+from lambda_function.src.main import *
 
 
 CONFIG = {

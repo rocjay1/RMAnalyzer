@@ -1,12 +1,14 @@
-[2023-09-30 19:44:28] Setting up the environment...
-[2023-09-30 19:44:29] Deploying the application...
+[2023-09-30 21:33:01] Setting up the environment...
+[2023-09-30 21:33:02] Deploying the application...
+[2023-09-30 21:35:34] Setting up the environment...
+[2023-09-30 21:35:35] Deploying the application...
 {
     "Role": {
         "Path": "/",
         "RoleName": "rm-analyzer-exec-role-test",
-        "RoleId": "AROA3P6FTMMXJGUMAXGX2",
+        "RoleId": "AROA3P6FTMMXPDWQHDHYC",
         "Arn": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role-test",
-        "CreateDate": "2023-10-01T00:44:31+00:00",
+        "CreateDate": "2023-10-01T02:35:37+00:00",
         "AssumeRolePolicyDocument": {
             "Version": "2012-10-17",
             "Statement": [
@@ -41,13 +43,13 @@
     "Description": "",
     "Timeout": 10,
     "MemorySize": 128,
-    "LastModified": "2023-10-01T00:44:49.385+0000",
-    "CodeSha256": "OeCIzRlUk4GqyLLYiL5zLKS346w1HzdEvYM5zm/hWBo=",
+    "LastModified": "2023-10-01T02:35:55.264+0000",
+    "CodeSha256": "ZYZL0y8XQB14sLt8IwyVKJHwXdzmDGMu+7PUVvM8UIA=",
     "Version": "$LATEST",
     "TracingConfig": {
         "Mode": "PassThrough"
     },
-    "RevisionId": "c9a60237-0e57-42b3-9811-4c6c02567589",
+    "RevisionId": "a763d7d6-761d-4219-9f7a-8c6d7c7f2f27",
     "State": "Pending",
     "StateReason": "The function is being created.",
     "StateReasonCode": "Creating",

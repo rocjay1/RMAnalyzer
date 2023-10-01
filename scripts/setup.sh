@@ -109,40 +109,63 @@ CREATE_CMD="aws iam create-role --role-name $LAMBDA_EXE_ROLE --assume-role-polic
 check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
 wait_for_resource "$CHECK_CMD"
 
-# Attach the execution policy to the role
-echo "Attaching the AWSLambdaBasicExecutionRole policy to role $LAMBDA_EXE_ROLE..."
-CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q AWSLambdaBasicExecutionRole"
-CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-wait_for_resource "$CHECK_CMD"
+declare -a POLICY_ARNS=(
+    "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+)
+for policy_arn in "${POLICY_ARNS[@]}"; do
+    # Check if the policy is already attached to the role
+    echo "Checking if policy $policy_arn is attached to role $LAMBDA_EXE_ROLE..."
+    CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
+    CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn \"$policy_arn\""
+    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+    wait_for_resource "$CHECK_CMD"
+done
 
-# Attach the SES policy to the role
-echo "Attaching the AmazonSESFullAccess policy to role $LAMBDA_EXE_ROLE..."
-CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q AmazonSESFullAccess"
-CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn arn:aws:iam::aws:policy/AmazonSESFullAccess"
-check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-wait_for_resource "$CHECK_CMD"
+# # Attach the execution policy to the role
+# echo "Attaching the AWSLambdaBasicExecutionRole policy to role $LAMBDA_EXE_ROLE..."
+# CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q AWSLambdaBasicExecutionRole"
+# CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+# check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+# wait_for_resource "$CHECK_CMD"
 
-# Attach the S3 read access policy to the role
-echo "Attaching the AmazonS3ReadOnlyAccess policy to role $LAMBDA_EXE_ROLE..."
-CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q AmazonS3ReadOnlyAccess"
-CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-wait_for_resource "$CHECK_CMD"
+# # Attach the SES policy to the role
+# echo "Attaching the AmazonSESFullAccess policy to role $LAMBDA_EXE_ROLE..."
+# CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q AmazonSESFullAccess"
+# CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn arn:aws:iam::aws:policy/AmazonSESFullAccess"
+# check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+# wait_for_resource "$CHECK_CMD"
 
-# Create the main S3 bucket
-echo "Creating S3 bucket $MAIN_S3_BUCKET..."
-CHECK_CMD="aws s3api head-bucket --bucket $MAIN_S3_BUCKET"
-CREATE_CMD="aws s3api create-bucket --bucket $MAIN_S3_BUCKET --region $AWS_REGION"
-check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-wait_for_resource "$CHECK_CMD"
+# # Attach the S3 read access policy to the role
+# echo "Attaching the AmazonS3ReadOnlyAccess policy to role $LAMBDA_EXE_ROLE..."
+# CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q AmazonS3ReadOnlyAccess"
+# CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+# check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+# wait_for_resource "$CHECK_CMD"
 
-# Create the config S3 bucket
-echo "Creating S3 bucket $CONFIG_S3_BUCKET..."
-CHECK_CMD="aws s3api head-bucket --bucket $CONFIG_S3_BUCKET"
-CREATE_CMD="aws s3api create-bucket --bucket $CONFIG_S3_BUCKET --region $AWS_REGION"
-check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-wait_for_resource "$CHECK_CMD"
+for bucket in $MAIN_S3_BUCKET $CONFIG_S3_BUCKET; do
+    # Check if the bucket exists
+    echo "Checking if S3 bucket $bucket exists..."
+    CHECK_CMD="aws s3api head-bucket --bucket $bucket"
+    CREATE_CMD="aws s3api create-bucket --bucket $bucket --region $AWS_REGION"
+    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+    wait_for_resource "$CHECK_CMD"
+done
+
+# # Create the main S3 bucket
+# echo "Creating S3 bucket $MAIN_S3_BUCKET..."
+# CHECK_CMD="aws s3api head-bucket --bucket $MAIN_S3_BUCKET"
+# CREATE_CMD="aws s3api create-bucket --bucket $MAIN_S3_BUCKET --region $AWS_REGION"
+# check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+# wait_for_resource "$CHECK_CMD"
+
+# # Create the config S3 bucket
+# echo "Creating S3 bucket $CONFIG_S3_BUCKET..."
+# CHECK_CMD="aws s3api head-bucket --bucket $CONFIG_S3_BUCKET"
+# CREATE_CMD="aws s3api create-bucket --bucket $CONFIG_S3_BUCKET --region $AWS_REGION"
+# check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
+# wait_for_resource "$CHECK_CMD"
 
 # Upload the config file to the config S3 bucket
 echo "Uploading config file to S3 bucket $CONFIG_S3_BUCKET..."

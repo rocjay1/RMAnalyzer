@@ -62,7 +62,7 @@ if eval "$CHECK_ROLE_CMD" > /dev/null 2>&1; then
     )
     for policy_arn in "${POLICY_ARNS[@]}"; do
         echo "Detaching policy $policy_arn from role $LAMBDA_EXE_ROLE..."
-        CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE --query \"AttachedPolicies[?PolicyArn=='$policy_arn'].PolicyArn\" --output text"
+        CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
         PROCESS_CMD="aws iam detach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn \"$policy_arn\""
         check_and_process_resource "$CHECK_CMD" "$PROCESS_CMD"
     done

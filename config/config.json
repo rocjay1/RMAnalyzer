@@ -1,15 +1,21 @@
 {
-    "Owner": "YourEmail@example.com",
     "People": [
         {
-            "Name": "Person1",
-            "Email": "person1@example.com",
-            "Accounts": [12345, 67890]
+            "Name": "Rocco",
+            "Accounts": [
+                1122,
+                3550
+            ],
+            "Email": "jasonroc19@gmail.com"
         },
         {
-            "Name": "Person2",
-            "Email": "person2@example.com",
-            "Accounts": [54321, 98765]
+            "Name": "Tori",
+            "Accounts": [
+                2972,
+                2681
+            ],
+            "Email": "vcbarr1@gmail.com"
         }
-    ]
+    ],
+    "Owner": "jasonroc19@gmail.com"
 }

@@ -22,6 +22,11 @@ readonly LAMBDA_EXE_ROLE="rm-analyzer-exec-role"
 readonly MAIN_S3_BUCKET="rm-analyzer-sheets-prd"
 readonly CONFIG_S3_BUCKET="rm-analyzer-config-prd"  # Needs to be set in main.py as well
 readonly LAMBDA_FUNCTION="RMAnalyzer-prd"
+readonly POLICY_ARNS=(
+    "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+)
 
 # ------- FUNCTIONS ------- 
 # Log a message to the log file
@@ -65,10 +70,10 @@ function wait_for_resource() {
     done
 }
 
-# Check if AWS resources exist and process them if they do. 
+# Check if AWS resources exist and delete them if they do 
 # $1: AWS CLI command to check if resource exists
 # $2: AWS CLI command to process resource
-function check_and_process_resource() {
+function check_and_delete_resource() {
     local check_cmd="$1"
     local process_cmd="$2"
     if eval "$check_cmd" > /dev/null 2>&1; then
@@ -83,82 +88,81 @@ function check_and_process_resource() {
 function build_env() {
     log "Building the application..."
 
+    # Initialize cmd variables
+    local check_cmd=""
+    local create_cmd=""
+
     # Get the AWS region and account ID
-    local AWS_REGION=$(aws configure get region)
-    local AWS_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+    local aws_region=$(aws configure get region)
+    local aws_account=$(aws sts get-caller-identity --query Account --output text)
 
     # Create the lamba execution role and set max session duration to 1 hour
     log "Creating role $LAMBDA_EXE_ROLE..."
-    CHECK_CMD="aws iam get-role --role-name $LAMBDA_EXE_ROLE"
-    CREATE_CMD="aws iam create-role --role-name $LAMBDA_EXE_ROLE --assume-role-policy-document file://$POLICY_DIR/trusted-entities.json --max-session-duration 3600"
-    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-    wait_for_resource "$CHECK_CMD"
+    check_cmd="aws iam get-role --role-name $LAMBDA_EXE_ROLE"
+    create_cmd="aws iam create-role --role-name $LAMBDA_EXE_ROLE --assume-role-policy-document file://$POLICY_DIR/trusted-entities.json --max-session-duration 3600"
+    check_and_create_resource "$check_cmd" "$create_cmd"
+    wait_for_resource "$check_cmd"
 
     # Attach the managed policies to the role
-    declare -a POLICY_ARNS=(
-        "arn:aws:iam::aws:policy/AmazonSESFullAccess"
-        "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-        "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-    )
     for policy_arn in "${POLICY_ARNS[@]}"; do
         log "Attaching policy $policy_arn to role $LAMBDA_EXE_ROLE..."
-        CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
-        CREATE_CMD="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn $policy_arn"
-        check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-        wait_for_resource "$CHECK_CMD"
+        check_cmd="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
+        create_cmd="aws iam attach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn $policy_arn"
+        check_and_create_resource "$check_cmd" "$create_cmd"
+        wait_for_resource "$check_cmd"
     done
 
     # Create the S3 buckets
     for bucket in $MAIN_S3_BUCKET $CONFIG_S3_BUCKET; do
         log "Creating S3 bucket $bucket..."
-        CHECK_CMD="aws s3api head-bucket --bucket $bucket"
-        CREATE_CMD="aws s3api create-bucket --bucket $bucket --region $AWS_REGION"
-        check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-        wait_for_resource "$CHECK_CMD"
+        check_cmd="aws s3api head-bucket --bucket $bucket"
+        create_cmd="aws s3api create-bucket --bucket $bucket --region $aws_region"
+        check_and_create_resource "$check_cmd" "$create_cmd"
+        wait_for_resource "$check_cmd"
     done
 
     # Upload the config file to the config S3 bucket
     log "Uploading config file to S3 bucket $CONFIG_S3_BUCKET..."
-    CHECK_CMD="aws s3api head-object --bucket $CONFIG_S3_BUCKET --key config.json"
-    CREATE_CMD="aws s3api put-object --bucket $CONFIG_S3_BUCKET --key config.json --body $CONFIG_FILE"
-    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-    wait_for_resource "$CHECK_CMD"
+    check_cmd="aws s3api head-object --bucket $CONFIG_S3_BUCKET --key config.json"
+    create_cmd="aws s3api put-object --bucket $CONFIG_S3_BUCKET --key config.json --body $CONFIG_FILE"
+    check_and_create_resource "$check_cmd" "$create_cmd"
+    wait_for_resource "$check_cmd"
 
     # ZIP the lambda function main.py up to create the deployment package
     log "Zipping up lambda function..."
     (
-    cd $FUNCTION_DIR
-    zip -FS ../$DIST_DIR/rm-analyzer.zip main.py >> "../$LOG_FILE" 2>&1
+        cd $FUNCTION_DIR
+        zip -FS ../$DIST_DIR/rm-analyzer.zip main.py >> "../$LOG_FILE" 2>&1
     )
 
     # Create the lambda function
     log "Creating lambda function $LAMBDA_FUNCTION..."
-    CHECK_CMD="aws lambda get-function --function-name $LAMBDA_FUNCTION"
-    CREATE_CMD="aws lambda create-function --function-name $LAMBDA_FUNCTION --runtime python3.11 --timeout 10 --role arn:aws:iam::${AWS_ACCOUNT}:role/${LAMBDA_EXE_ROLE} --handler main.lambda_handler --zip-file fileb://$DIST_DIR/rm-analyzer.zip"
-    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-    wait_for_resource "$CHECK_CMD" 
+    check_cmd="aws lambda get-function --function-name $LAMBDA_FUNCTION"
+    create_cmd="aws lambda create-function --function-name $LAMBDA_FUNCTION --runtime python3.11 --timeout 10 --role arn:aws:iam::${aws_account}:role/${LAMBDA_EXE_ROLE} --handler main.lambda_handler --zip-file fileb://$DIST_DIR/rm-analyzer.zip"
+    check_and_create_resource "$check_cmd" "$create_cmd"
+    wait_for_resource "$check_cmd" 
 
     # Attach the resource-based policy to the lambda function
     log "Adding invoke permissions to lambda function $LAMBDA_FUNCTION..."
-    CHECK_CMD="aws lambda get-policy --function-name $LAMBDA_FUNCTION | grep -q s3invoke"
-    CREATE_CMD="aws lambda add-permission --function-name $LAMBDA_FUNCTION --statement-id s3invoke --action lambda:InvokeFunction --principal s3.amazonaws.com --source-arn arn:aws:s3:::$MAIN_S3_BUCKET --source-account $AWS_ACCOUNT"
-    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-    wait_for_resource "$CHECK_CMD"
+    check_cmd="aws lambda get-policy --function-name $LAMBDA_FUNCTION | grep -q s3invoke"
+    create_cmd="aws lambda add-permission --function-name $LAMBDA_FUNCTION --statement-id s3invoke --action lambda:InvokeFunction --principal s3.amazonaws.com --source-arn arn:aws:s3:::$MAIN_S3_BUCKET --source-account $aws_account"
+    check_and_create_resource "$check_cmd" "$create_cmd"
+    wait_for_resource "$check_cmd"
 
     # Set up the S3 bucket to trigger the lambda function
     log "Setting up S3 bucket $MAIN_S3_BUCKET to trigger lambda function $LAMBDA_FUNCTION..."
-    CHECK_CMD="aws s3api get-bucket-notification-configuration --bucket $MAIN_S3_BUCKET | grep -q $LAMBDA_FUNCTION"
-    CREATE_CMD="aws s3api put-bucket-notification-configuration --bucket $MAIN_S3_BUCKET --notification-configuration '{
+    check_cmd="aws s3api get-bucket-notification-configuration --bucket $MAIN_S3_BUCKET | grep -q $LAMBDA_FUNCTION"
+    create_cmd="aws s3api put-bucket-notification-configuration --bucket $MAIN_S3_BUCKET --notification-configuration '{
         \"LambdaFunctionConfigurations\": [
             {
-                \"LambdaFunctionArn\": \"arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT}:function:${LAMBDA_FUNCTION}\",
+                \"LambdaFunctionArn\": \"arn:aws:lambda:${aws_region}:${aws_account}:function:${LAMBDA_FUNCTION}\",
                 \"Events\": [\"s3:ObjectCreated:Put\"],
                 \"Id\": \"1\"
             }
         ]
     }'"
-    check_and_create_resource "$CHECK_CMD" "$CREATE_CMD"
-    wait_for_resource "$CHECK_CMD"
+    check_and_create_resource "$check_cmd" "$create_cmd"
+    wait_for_resource "$check_cmd"
 
     log "Build complete!"
     log "Use 'aws s3 cp <CSV path> s3://$MAIN_S3_BUCKET/' to get started" 
@@ -167,31 +171,31 @@ function build_env() {
 # Tear down the AWS environment for the application
 function teardown_env() {
     log "Tearing down the environment..."
+
+    # Initialize cmd variables
+    local check_cmd=""
+    local delete_cmd=""
+
     # Delete Lambda function
     log "Deleting Lambda function $LAMBDA_FUNCTION..."
-    CHECK_CMD="aws lambda get-function --function-name $LAMBDA_FUNCTION"
-    DELETE_CMD="aws lambda delete-function --function-name $LAMBDA_FUNCTION"
-    check_and_process_resource "$CHECK_CMD" "$DELETE_CMD"
+    check_cmd="aws lambda get-function --function-name $LAMBDA_FUNCTION"
+    delete_cmd="aws lambda delete-function --function-name $LAMBDA_FUNCTION"
+    check_and_delete_resource "$check_cmd" "$delete_cmd"
 
     # Check if role exists
-    CHECK_ROLE_CMD="aws iam get-role --role-name $LAMBDA_EXE_ROLE"
-    if eval "$CHECK_ROLE_CMD" > /dev/null 2>&1; then
+    local check_role_cmd="aws iam get-role --role-name $LAMBDA_EXE_ROLE"
+    if eval "$check_role_cmd" > /dev/null 2>&1; then
 
-        declare -a POLICY_ARNS=(
-            "arn:aws:iam::aws:policy/AmazonSESFullAccess"
-            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-            "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-        )
         for policy_arn in "${POLICY_ARNS[@]}"; do
             log "Detaching policy $policy_arn from role $LAMBDA_EXE_ROLE..."
-            CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
-            PROCESS_CMD="aws iam detach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn $policy_arn"
-            check_and_process_resource "$CHECK_CMD" "$PROCESS_CMD"
+            check_cmd="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
+            delete_cmd="aws iam detach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn $policy_arn"
+            check_and_delete_resource "$check_cmd" "$delete_cmd"
         done
 
         log "Deleting role $LAMBDA_EXE_ROLE..."
-        DELETE_ROLE_CMD="aws iam delete-role --role-name $LAMBDA_EXE_ROLE"
-        eval "$DELETE_ROLE_CMD" >> "$LOG_FILE" 2>&1
+        local delete_role_cmd="aws iam delete-role --role-name $LAMBDA_EXE_ROLE"
+        eval "$delete_role_cmd" >> "$LOG_FILE" 2>&1
         log "Resource deleted"
 
     else
@@ -201,9 +205,9 @@ function teardown_env() {
     # Empty and delete S3 buckets
     for bucket in $MAIN_S3_BUCKET $CONFIG_S3_BUCKET; do
         log "Deleting S3 bucket $bucket..."
-        CHECK_CMD="aws s3api head-bucket --bucket $bucket"
-        DELETE_CMD="aws s3 rm s3://$bucket --recursive && aws s3api delete-bucket --bucket $bucket"
-        check_and_process_resource "$CHECK_CMD" "$DELETE_CMD"
+        check_cmd="aws s3api head-bucket --bucket $bucket"
+        delete_cmd="aws s3 rm s3://$bucket --recursive && aws s3api delete-bucket --bucket $bucket"
+        check_and_delete_resource "$check_cmd" "$delete_cmd"
     done
 
     log "Teardown complete!"
@@ -244,7 +248,7 @@ function setup() {
         exit 1
     fi
 
-    # Check that the dist directory exists
+    # Check that the dist directory still exists
     if [ ! -d "$DIST_DIR" ]; then
         log "Directory dist does not exist"
         exit 1

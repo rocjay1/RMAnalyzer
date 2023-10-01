@@ -1,0 +1,71 @@
+[2023-09-30 19:44:28] Setting up the environment...
+[2023-09-30 19:44:29] Deploying the application...
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "rm-analyzer-exec-role-test",
+        "RoleId": "AROA3P6FTMMXJGUMAXGX2",
+        "Arn": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role-test",
+        "CreateDate": "2023-10-01T00:44:31+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        }
+    }
+}
+{
+    "Location": "/rm-analyzer-sheets-test"
+}
+{
+    "Location": "/rm-analyzer-config-test"
+}
+{
+    "ETag": "\"c86cb90a7a5035a509973a243a293b98\"",
+    "ServerSideEncryption": "AES256"
+}
+{
+    "FunctionName": "RMAnalyzer-test",
+    "FunctionArn": "arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-test",
+    "Runtime": "python3.11",
+    "Role": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role-test",
+    "Handler": "main.lambda_handler",
+    "CodeSize": 5435,
+    "Description": "",
+    "Timeout": 10,
+    "MemorySize": 128,
+    "LastModified": "2023-10-01T00:44:49.385+0000",
+    "CodeSha256": "OeCIzRlUk4GqyLLYiL5zLKS346w1HzdEvYM5zm/hWBo=",
+    "Version": "$LATEST",
+    "TracingConfig": {
+        "Mode": "PassThrough"
+    },
+    "RevisionId": "c9a60237-0e57-42b3-9811-4c6c02567589",
+    "State": "Pending",
+    "StateReason": "The function is being created.",
+    "StateReasonCode": "Creating",
+    "PackageType": "Zip",
+    "Architectures": [
+        "x86_64"
+    ],
+    "EphemeralStorage": {
+        "Size": 512
+    },
+    "SnapStart": {
+        "ApplyOn": "None",
+        "OptimizationStatus": "Off"
+    },
+    "RuntimeVersionConfig": {
+        "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:2bec9c47bcece63e8c947a42cec566b9154b5b295c3c8a79b46d8c41c286dc0c"
+    }
+}
+{
+    "Statement": "{\"Sid\":\"s3invoke\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-test\",\"Condition\":{\"StringEquals\":{\"AWS:SourceAccount\":\"790151521070\"},\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:s3:::rm-analyzer-sheets-test\"}}}"
+}

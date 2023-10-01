@@ -1,11 +1,11 @@
-#!/usr/bin/env zsh
+#!/bin/bash
 
 # Change to the directory of this script
 cd "$(dirname "$0")"
 
 # ------- CONSTANTS ------- 
 readonly POLICY_DIR="../policies"
-readonly LOG_FILE="../logs/teardown.log"
+readonly LOG_FILE="../logs/cleanup.log"
 readonly LAMBDA_EXE_ROLE="rm-analyzer-exec-role-test"
 readonly MAIN_S3_BUCKET="rm-analyzer-sheets-test"
 readonly CONFIG_S3_BUCKET="rm-analyzer-config-test"
@@ -23,30 +23,35 @@ function log() {
 # $1: AWS CLI command to check if resource exists
 # $2: AWS CLI command to process resource
 function check_and_process_resource() {
-    if eval "$1" > /dev/null 2>&1; then
-        eval "$2" >> "$LOG_FILE" 2>&1
-        echo "Done"
+    local check_cmd="$1"
+    local process_cmd="$2"
+    if eval "$check_cmd" > /dev/null 2>&1; then
+        eval "$process_cmd" >> "$LOG_FILE" 2>&1
+        log "Resource deleted"
     else
-        echo "Resource does not exist"
+        log "Resource does not exist"
     fi
 }
 
-# ------- TEARDOWN ------- 
-log "Tearing down the environment..."
-
-# Set up error handling
-set -e 
-
+# Handle errors
+# $1: Line number of error
 handle_error() {
     local exit_code="$?"
-    log "An error occurred on line $1 of the script. Exiting with status code $exit_code"
+    local line_number="$1"
+    log "An error occurred on line $line_number of the script" 
+    log "Exiting with status code $exit_code"
     exit "$exit_code"
 }
 
+# ------- TEARDOWN ------- 
+log "Cleaning up the environment..."
+
+# Set up error handling
+set -e 
 trap 'handle_error $LINENO' ERR
 
 # Delete Lambda function
-echo "Deleting Lambda function $LAMBDA_FUNCTION..."
+log "Deleting Lambda function $LAMBDA_FUNCTION..."
 CHECK_CMD="aws lambda get-function --function-name $LAMBDA_FUNCTION"
 DELETE_CMD="aws lambda delete-function --function-name $LAMBDA_FUNCTION"
 check_and_process_resource "$CHECK_CMD" "$DELETE_CMD"
@@ -54,36 +59,36 @@ check_and_process_resource "$CHECK_CMD" "$DELETE_CMD"
 # Check if role exists
 CHECK_ROLE_CMD="aws iam get-role --role-name $LAMBDA_EXE_ROLE"
 if eval "$CHECK_ROLE_CMD" > /dev/null 2>&1; then
-    # Detach specific policies from the role
+
     declare -a POLICY_ARNS=(
         "arn:aws:iam::aws:policy/AmazonSESFullAccess"
         "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
         "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
     )
     for policy_arn in "${POLICY_ARNS[@]}"; do
-        echo "Detaching policy $policy_arn from role $LAMBDA_EXE_ROLE..."
+        log "Detaching policy $policy_arn from role $LAMBDA_EXE_ROLE..."
         CHECK_CMD="aws iam list-attached-role-policies --role-name $LAMBDA_EXE_ROLE | grep -q $policy_arn"
-        PROCESS_CMD="aws iam detach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn \"$policy_arn\""
+        PROCESS_CMD="aws iam detach-role-policy --role-name $LAMBDA_EXE_ROLE --policy-arn $policy_arn"
         check_and_process_resource "$CHECK_CMD" "$PROCESS_CMD"
     done
 
-    # Delete the role
-    echo "Deleting role $LAMBDA_EXE_ROLE..."
+    log "Deleting role $LAMBDA_EXE_ROLE..."
     DELETE_ROLE_CMD="aws iam delete-role --role-name $LAMBDA_EXE_ROLE"
     eval "$DELETE_ROLE_CMD" >> "$LOG_FILE" 2>&1
-    echo "Done"
+    log "Resource deleted"
+
 else
-    echo "Role $LAMBDA_EXE_ROLE does not exist"
+    log "Role $LAMBDA_EXE_ROLE does not exist"
 fi
 
 # Empty and delete S3 buckets
 for bucket in $MAIN_S3_BUCKET $CONFIG_S3_BUCKET; do
-    echo "Deleting S3 bucket $bucket..."
+    log "Deleting S3 bucket $bucket..."
     CHECK_CMD="aws s3api head-bucket --bucket $bucket"
     DELETE_CMD="aws s3 rm s3://$bucket --recursive && aws s3api delete-bucket --bucket $bucket"
     check_and_process_resource "$CHECK_CMD" "$DELETE_CMD"
 done
 
-echo "Teardown complete!"
+log "Cleanup complete!"
 
 exit 0

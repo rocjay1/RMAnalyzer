@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/bin/bash
 # Desc: Copies a file to S3
 # Author: Rocco Davino
 

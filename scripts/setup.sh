@@ -1,8 +1,8 @@
 #!/usr/bin/env zsh
 # Prerequisites:
-# - User created in AWS IAM
+# - User created in AWS IAM with admin access
 # - AWS CLI installed 
-# - AWS CLI configured with a profile for the user, e.g.: aws configure --profile rm-analyzer-test
+# - Configured default profile for AWS CLI
 
 # Change to the directory of this script
 cd "$(dirname "$0")"  

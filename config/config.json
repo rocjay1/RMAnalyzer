@@ -1,0 +1,21 @@
+{
+    "People": [
+        {
+            "Name": "Rocco",
+            "Accounts": [
+                1122,
+                3550
+            ],
+            "Email": "jasonroc19@gmail.com"
+        },
+        {
+            "Name": "Tori",
+            "Accounts": [
+                2972,
+                2681
+            ],
+            "Email": "vcbarr1@gmail.com"
+        }
+    ],
+    "Owner": "jasonroc19@gmail.com"
+}

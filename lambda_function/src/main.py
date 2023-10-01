@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG = {"Bucket": "rm-analyzer-config", "Key": "config.json"}
+CONFIG = {"Bucket": "rm-analyzer-config-test", "Key": "config.json"}  # Needs to match S3 bucket/key from setup.sh
 
 
 # HELPER FUNCTIONS
@@ -121,10 +121,21 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
     try:
         response = ses.send_email(
             Source=source,
-            Destination={"ToAddresses": to_addresses},
+            Destination={
+                "ToAddresses": to_addresses
+            },
             Message={
-                "Subject": {"Data": subject},
-                "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
+                "Subject": {
+                    "Data": subject
+                },
+                "Body": {
+                    "Html": {
+                        "Data": html_body
+                    },
+                    "Text": {
+                        "Data": text_body
+                    }
+                },
             },
         )
         return response
@@ -349,10 +360,10 @@ class Summary:
 
         try:
             people_config = config["People"]
-            self.people = self.initialize_people(people_config)
         except (KeyError, TypeError):
             logger.error("Invalid or missing 'People' in configuration.")
             raise
+        self.people = self.initialize_people(people_config)
 
     def initialize_people(self, people_config):
         """
@@ -407,8 +418,7 @@ class Summary:
         """
         for transaction in parsed_transactions:
             if (
-                transaction.account_number
-                in person.account_numbers
+                transaction.account_number in person.account_numbers
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):

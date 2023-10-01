@@ -1,8 +1,10 @@
 #!/bin/bash
+# Description: Set up the AWS environment for the application
 # Prerequisites:
 # - User created in AWS IAM with admin access
 # - AWS CLI installed and configured default profile for AWS CLI
 # - config.json file in config directory filled out with the correct values
+# Author: Rocco Davino
 
 # Change to the directory of this script
 cd "$(dirname "$0")"  
@@ -13,10 +15,10 @@ readonly POLICY_DIR="../policies"
 readonly DIST_DIR="../dist"
 readonly LOG_FILE="../logs/setup.log"
 readonly CONFIG_FILE="../config/config.json"
-readonly LAMBDA_EXE_ROLE="rm-analyzer-exec-role-test"
-readonly MAIN_S3_BUCKET="rm-analyzer-sheets-test"
-readonly CONFIG_S3_BUCKET="rm-analyzer-config-test"
-readonly LAMBDA_FUNCTION="RMAnalyzer-test"
+readonly LAMBDA_EXE_ROLE="rm-analyzer-exec-role"
+readonly MAIN_S3_BUCKET="rm-analyzer-sheets-prd"  # Needs to be set in copy_to_s3.sh as well
+readonly CONFIG_S3_BUCKET="rm-analyzer-config-prd"  # Needs to be set in main.py as well
+readonly LAMBDA_FUNCTION="RMAnalyzer-prd"
 
 # ------- FUNCTIONS ------- 
 # Log a message to the log file
@@ -83,9 +85,9 @@ else
     exit 1
 fi
 
-# Check that the policy and role files still exist
-if [ ! -f "$POLICY_DIR/trusted-entities.json" ]; then  # Check trusted-entities.json for now
-    log "Files are missing from policies directory"
+# Check trusted-entities.json still exists
+if [ ! -f "$POLICY_DIR/trusted-entities.json" ]; then
+    log "File policies/trusted-entities.json does not exist"
     exit 1
 fi
 

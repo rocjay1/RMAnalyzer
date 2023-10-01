@@ -1,15 +1,15 @@
-[2023-10-01 08:16:58] Setting up the environment...
-[2023-10-01 08:16:58] AWS CLI is installed
-[2023-10-01 08:16:59] The default AWS profile exists
-[2023-10-01 08:16:59] Deploying the application...
-[2023-10-01 08:17:00] Creating role rm-analyzer-exec-role-test...
+[2023-10-01 08:35:18] Setting up the environment...
+[2023-10-01 08:35:18] AWS CLI is installed
+[2023-10-01 08:35:19] The default AWS profile exists
+[2023-10-01 08:35:19] Deploying the application...
+[2023-10-01 08:35:20] Creating role rm-analyzer-exec-role...
 {
     "Role": {
         "Path": "/",
-        "RoleName": "rm-analyzer-exec-role-test",
-        "RoleId": "AROA3P6FTMMXOFB32P4EL",
-        "Arn": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role-test",
-        "CreateDate": "2023-10-01T13:17:01+00:00",
+        "RoleName": "rm-analyzer-exec-role",
+        "RoleId": "AROA3P6FTMMXGN5OZCFFT",
+        "Arn": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role",
+        "CreateDate": "2023-10-01T13:35:22+00:00",
         "AssumeRolePolicyDocument": {
             "Version": "2012-10-17",
             "Statement": [
@@ -24,48 +24,48 @@
         }
     }
 }
-[2023-10-01 08:17:01] Done
-[2023-10-01 08:17:02] Attaching policy arn:aws:iam::aws:policy/AmazonSESFullAccess to role rm-analyzer-exec-role-test...
-[2023-10-01 08:17:04] Done
-[2023-10-01 08:17:04] Attaching policy arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole to role rm-analyzer-exec-role-test...
-[2023-10-01 08:17:06] Done
-[2023-10-01 08:17:07] Attaching policy arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess to role rm-analyzer-exec-role-test...
-[2023-10-01 08:17:08] Done
-[2023-10-01 08:17:09] Creating S3 bucket rm-analyzer-sheets-test...
+[2023-10-01 08:35:22] Resource created
+[2023-10-01 08:35:23] Attaching policy arn:aws:iam::aws:policy/AmazonSESFullAccess to role rm-analyzer-exec-role...
+[2023-10-01 08:35:24] Resource created
+[2023-10-01 08:35:25] Attaching policy arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole to role rm-analyzer-exec-role...
+[2023-10-01 08:35:27] Resource created
+[2023-10-01 08:35:27] Attaching policy arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess to role rm-analyzer-exec-role...
+[2023-10-01 08:35:29] Resource created
+[2023-10-01 08:35:30] Creating S3 bucket rm-analyzer-sheets-prd...
 {
-    "Location": "/rm-analyzer-sheets-test"
+    "Location": "/rm-analyzer-sheets-prd"
 }
-[2023-10-01 08:17:11] Done
-[2023-10-01 08:17:12] Creating S3 bucket rm-analyzer-config-test...
+[2023-10-01 08:35:31] Resource created
+[2023-10-01 08:35:32] Creating S3 bucket rm-analyzer-config-prd...
 {
-    "Location": "/rm-analyzer-config-test"
+    "Location": "/rm-analyzer-config-prd"
 }
-[2023-10-01 08:17:13] Done
-[2023-10-01 08:17:14] Uploading config file to S3 bucket rm-analyzer-config-test...
+[2023-10-01 08:35:34] Resource created
+[2023-10-01 08:35:35] Uploading config file to S3 bucket rm-analyzer-config-prd...
 {
     "ETag": "\"c86cb90a7a5035a509973a243a293b98\"",
     "ServerSideEncryption": "AES256"
 }
-[2023-10-01 08:17:16] Done
-[2023-10-01 08:17:17] Zipping up lambda function...
-[2023-10-01 08:17:17] Creating lambda function RMAnalyzer-test...
+[2023-10-01 08:35:36] Resource created
+[2023-10-01 08:35:37] Zipping up lambda function...
+[2023-10-01 08:35:37] Creating lambda function RMAnalyzer-prd...
 {
-    "FunctionName": "RMAnalyzer-test",
-    "FunctionArn": "arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-test",
+    "FunctionName": "RMAnalyzer-prd",
+    "FunctionArn": "arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-prd",
     "Runtime": "python3.11",
-    "Role": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role-test",
+    "Role": "arn:aws:iam::790151521070:role/rm-analyzer-exec-role",
     "Handler": "main.lambda_handler",
     "CodeSize": 5435,
     "Description": "",
     "Timeout": 10,
     "MemorySize": 128,
-    "LastModified": "2023-10-01T13:17:18.940+0000",
-    "CodeSha256": "ZYZL0y8XQB14sLt8IwyVKJHwXdzmDGMu+7PUVvM8UIA=",
+    "LastModified": "2023-10-01T13:35:39.277+0000",
+    "CodeSha256": "ZqpoCWoEb4buCYOo6+1K8yArwm7wOoC6iJUCkFLDYk0=",
     "Version": "$LATEST",
     "TracingConfig": {
         "Mode": "PassThrough"
     },
-    "RevisionId": "3cb20e0c-35b4-459c-b497-f998a772c26a",
+    "RevisionId": "fcb675af-ac57-42c4-9a85-4657d93e6de1",
     "State": "Pending",
     "StateReason": "The function is being created.",
     "StateReasonCode": "Creating",
@@ -84,12 +84,12 @@
         "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:2bec9c47bcece63e8c947a42cec566b9154b5b295c3c8a79b46d8c41c286dc0c"
     }
 }
-[2023-10-01 08:17:19] Done
-[2023-10-01 08:17:20] Adding invoke permissions to lambda function RMAnalyzer-test...
+[2023-10-01 08:35:39] Resource created
+[2023-10-01 08:35:40] Adding invoke permissions to lambda function RMAnalyzer-prd...
 {
-    "Statement": "{\"Sid\":\"s3invoke\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-test\",\"Condition\":{\"StringEquals\":{\"AWS:SourceAccount\":\"790151521070\"},\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:s3:::rm-analyzer-sheets-test\"}}}"
+    "Statement": "{\"Sid\":\"s3invoke\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"s3.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-prd\",\"Condition\":{\"StringEquals\":{\"AWS:SourceAccount\":\"790151521070\"},\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:s3:::rm-analyzer-sheets-prd\"}}}"
 }
-[2023-10-01 08:17:21] Done
-[2023-10-01 08:17:22] Setting up S3 bucket rm-analyzer-sheets-test to trigger lambda function RMAnalyzer-test...
-[2023-10-01 08:17:24] Done
-[2023-10-01 08:17:24] Setup complete!
+[2023-10-01 08:35:41] Resource created
+[2023-10-01 08:35:42] Setting up S3 bucket rm-analyzer-sheets-prd to trigger lambda function RMAnalyzer-prd...
+[2023-10-01 08:35:44] Resource created
+[2023-10-01 08:35:45] Setup complete!

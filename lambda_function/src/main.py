@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG = {"Bucket": "rm-analyzer-config-test", "Key": "config.json"}  # Needs to match S3 bucket/key from setup.sh
+CONFIG = {"Bucket": "rm-analyzer-config-prd", "Key": "config.json"}  # Needs to match S3 bucket/key from setup.sh
 
 
 # HELPER FUNCTIONS

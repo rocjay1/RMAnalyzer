@@ -1,4 +1,7 @@
 #!/bin/bash
+# Description: Cleans up the AWS environment for the application
+# Prerequisites: Same as setup.sh
+# Author: Rocco Davino
 
 # Change to the directory of this script
 cd "$(dirname "$0")"
@@ -6,10 +9,11 @@ cd "$(dirname "$0")"
 # ------- CONSTANTS ------- 
 readonly POLICY_DIR="../policies"
 readonly LOG_FILE="../logs/cleanup.log"
-readonly LAMBDA_EXE_ROLE="rm-analyzer-exec-role-test"
-readonly MAIN_S3_BUCKET="rm-analyzer-sheets-test"
-readonly CONFIG_S3_BUCKET="rm-analyzer-config-test"
-readonly LAMBDA_FUNCTION="RMAnalyzer-test"
+# The following variables need to match the values in setup.sh
+readonly LAMBDA_EXE_ROLE="rm-analyzer-exec-role"
+readonly MAIN_S3_BUCKET="rm-analyzer-sheets"
+readonly CONFIG_S3_BUCKET="rm-analyzer-config"
+readonly LAMBDA_FUNCTION="RMAnalyzer"
 
 # ------- FUNCTIONS ------- 
 # Log a message to the log file

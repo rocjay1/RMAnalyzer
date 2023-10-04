@@ -25,6 +25,7 @@ from datetime import datetime, date
 import csv
 from enum import Enum
 import json
+import re
 import boto3
 from botocore import exceptions
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # CONSTANTS
 DATE_FORMAT = "%Y-%m-%d"
-DISPLAY_DATE_FORMAT = "%m/%y"
+DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
 CONFIG = {"Bucket": "rm-analyzer-config-prd", "Key": "config.json"}  # Needs to match S3 bucket/key from setup.sh
 
@@ -143,6 +144,26 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         logger.error("Error sending email: %s", ex)
         raise
 
+# Parse the date from the filename
+def parse_date_from_filename(filename):
+    """
+    Parses a date string from a given filename using a regular expression.
+
+    Args:
+        filename (str): The name of the file to parse the date from.
+
+    Returns:
+        datetime.date: The date parsed from the filename.
+
+    Raises:
+        AttributeError: If the regular expression fails to match the filename.
+    """
+    date_regex = re.compile(r"\d{4}-\d{2}-\d{2}")
+    try :
+        return datetime.strptime(date_regex.search(filename).group(0), "%Y-%m-%d").date()
+    except AttributeError as ex:
+        logger.error("Error parsing date from filename: %s", ex)
+        raise
 
 # CLASSES
 class Category(Enum):
@@ -581,7 +602,8 @@ def analyze_file(file_path):
     """
     bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
-    summary = SpreadsheetSummary(date.today(), file_content)
+    summary_date = parse_date_from_filename(key)
+    summary = SpreadsheetSummary(summary_date, file_content)
     source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(
         summary
     )

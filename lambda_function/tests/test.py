@@ -2,7 +2,7 @@
 # Desc: Unit tests for RMAnalyzer
 # Author: Rocco Davino
 
-
+import sys
 import json
 from datetime import date
 import unittest
@@ -172,7 +172,7 @@ class TestSummaryConstructor(unittest.TestCase):
     def test_summary_constructor_no_config(self):
         # Mock load_config to return self.good_config
         mock_load_config = MagicMock(return_value=self.good_config)
-        with patch("main.load_config", mock_load_config):
+        with patch("lambda_function.src.main.load_config", mock_load_config):
             summary = Summary(date.today())
             self.assertEqual(summary.date, date.today())
             self.assertEqual(len(summary.people), 2)
@@ -195,14 +195,14 @@ class TestLoadConfig(unittest.TestCase):
         mock_read_s3_file = MagicMock(
             side_effect=exceptions.ClientError({"Error": {}}, "test")
         )
-        with patch("main.read_s3_file", mock_read_s3_file):
+        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file):
             with self.assertRaises(exceptions.ClientError):
                 load_config()
 
     # Test load_config assuming read_s3_file returned a bad string
     def test_load_config_bad_json(self):
         mock_read_s3_file = MagicMock(return_value="bad config")
-        with patch("main.read_s3_file", mock_read_s3_file):
+        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file):
             with self.assertRaises(json.decoder.JSONDecodeError):
                 load_config()
 
@@ -210,11 +210,11 @@ class TestLoadConfig(unittest.TestCase):
     # Assert read_s3_file was called with "Bucket": "rm-analyzer-config", "Key": "config.json"
     def test_load_config_valid_read(self):
         mock_read_s3_file = MagicMock(return_value=json.dumps(CONFIG))
-        with patch("main.read_s3_file", mock_read_s3_file):
+        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file):
             result = load_config()
             self.assertEqual(result, CONFIG)
             mock_read_s3_file.assert_called_once_with(
-                "rm-analyzer-config", "config.json"
+                "rm-analyzer-config-prd", "config.json"
             )
 
 
@@ -407,7 +407,7 @@ class TestParse(unittest.TestCase):
             NotIgnoredFrom.NOT_IGNORED,
         )
         mock_from_row = MagicMock(return_value=mock_transaction)
-        with patch("main.Transaction.from_row", mock_from_row):
+        with patch("lambda_function.src.main.Transaction.from_row", mock_from_row):
             test_result = SpreadsheetParser.parse(csv_string)
             mock_from_row.assert_called_once_with(mock_row)
             # Confirm test_result is a list of length 1 and contains a Transaction object
@@ -562,7 +562,7 @@ class TestAnalyzeFile(unittest.TestCase):
         mock_email_generator = MagicMock()
         mock_send_email = MagicMock()
 
-        file_path = "s3://some_bucket/some_key"
+        file_path = "s3://some_bucket/2023-09-23T.csv"
         mock_file_content = "mocked_file_content"
         mock_read_s3_file.return_value = mock_file_content
 
@@ -581,17 +581,17 @@ class TestAnalyzeFile(unittest.TestCase):
         )
 
         # Use patch to replace the real function/class with our mocks
-        with patch("main.read_s3_file", mock_read_s3_file), patch(
-            "main.SpreadsheetSummary", mock_spreadsheet_summary
-        ), patch("main.EmailGenerator", mock_email_generator), patch(
-            "main.send_email", mock_send_email
+        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file), patch(
+            "lambda_function.src.main.SpreadsheetSummary", mock_spreadsheet_summary
+        ), patch("lambda_function.src.main.EmailGenerator", mock_email_generator), patch(
+            "lambda_function.src.main.send_email", mock_send_email
         ):
             analyze_file(file_path)
 
             # Assert the function and classes were called with the expected arguments
-            mock_read_s3_file.assert_called_once_with("some_bucket", "some_key")
+            mock_read_s3_file.assert_called_once_with("some_bucket", "2023-09-23T.csv")
             mock_spreadsheet_summary.assert_called_once_with(
-                date.today(), mock_file_content
+                date(2023, 9, 23), mock_file_content
             )
             mock_email_generator.generate_summary_email.assert_called_once_with(
                 mock_summary
@@ -615,9 +615,28 @@ class TestLambdaHandler(unittest.TestCase):
                 }
             ]
         }
-        with patch("main.analyze_file", mock_analyze_file):
+        with patch("lambda_function.src.main.analyze_file", mock_analyze_file):
             lambda_handler(event, None)
             mock_analyze_file.assert_called_once_with("s3://test-bucket/test-key")
+
+
+# Test the parse_date_from_filename function
+class TestParseDateFromFilename(unittest.TestCase):
+    def test_parse_date_from_filename(self):
+        # Test with a valid filename
+        filename = "2022-01-31.csv"
+        expected_date = date(2022, 1, 31)
+        self.assertEqual(parse_date_from_filename(filename), expected_date)
+
+        # Test with a different valid filename
+        filename = "2023-09-23T15_17_14.839Z-transactions.csv"
+        expected_date = date(2023, 9, 23)
+        self.assertEqual(parse_date_from_filename(filename), expected_date)
+
+        # Test with an invalid filename
+        filename = "expenses_2021-12.csv"
+        with self.assertRaises(AttributeError):
+            parse_date_from_filename(filename)
 
 
 def main():

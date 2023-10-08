@@ -23,7 +23,7 @@ CONFIG = {
             "Email": "tuttifruity@hotmail.com",
         },
     ],
-    "Owner": "bebas@gmail.com",
+    "OwnerAddress": "bebas@gmail.com",
     "Categories": {
         "DINING": "Dining & Drinks",
         "GROCERIES": "Groceries",
@@ -351,7 +351,7 @@ class TestInitializePeople(unittest.TestCase):
                     "Email": "boygeorge@gmail.com",
                 }
             ],
-            "Owner": "bebas@gmail.com",
+            "OwnerAddress": "bebas@gmail.com",
         }
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_config_keys)
@@ -365,7 +365,7 @@ class TestInitializePeople(unittest.TestCase):
                     "Email": "boygeorge@gmail.com",
                 }
             ],
-            "Owner": "bebas@gmail.com",
+            "OwnerAddress": "bebas@gmail.com",
         }
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), bad_config_values)

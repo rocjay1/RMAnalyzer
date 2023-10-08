@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG_PATH = 'config\\config.json'
+CONFIG_PATH = "config\\config.json"
 
 
 # HELPER FUNCTIONS
@@ -360,9 +360,9 @@ class Summary:
         self.date = summary_date
 
         try:
-            self.owner = config["Owner"]
+            self.owner = config["OwnerAddress"]
         except (KeyError, TypeError):
-            logger.error("Invalid or missing 'Owner' in configuration.")
+            logger.error("Invalid or missing 'OwnerAddress' in configuration.")
             raise
 
         try:

@@ -190,6 +190,14 @@ Category = build_category_enum()
 
 
 class IgnoredFrom(Enum):
+    """
+    An enumeration of possible values for the `ignored_from` parameter in the `RMAnalyzer` class.
+
+    Attributes:
+        BUDGET (str): Indicates that budget data should be ignored.
+        EVERYTHING (str): Indicates that all data should be ignored.
+        NOTHING (str): Indicates that no data should be ignored.
+    """
     BUDGET = "budget"
     EVERYTHING = "everything"
     NOTHING = str()

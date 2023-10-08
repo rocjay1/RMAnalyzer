@@ -48,7 +48,7 @@ class TestTransactionConstructor(unittest.TestCase):
         account_number = 123456
         amount = 100.0
         category = Category("Groceries")
-        ignore = NotIgnoredFrom("")
+        ignore = IgnoredFrom("")
         transaction = Transaction(
             transact_date, name, account_number, amount, category, ignore
         )
@@ -67,7 +67,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 123456,
                 100.0,
                 Category("Groceries"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             )
         with self.assertRaises(TypeError):
             Transaction(
@@ -76,7 +76,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 123456,
                 100.0,
                 Category("Groceries"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             )
         with self.assertRaises(TypeError):
             Transaction(
@@ -85,7 +85,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 "123456",
                 100.0,
                 Category("Groceries"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             )
         with self.assertRaises(TypeError):
             Transaction(
@@ -94,7 +94,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 123456,
                 "100.0",
                 Category("Groceries"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             )
         with self.assertRaises(TypeError):
             Transaction(
@@ -103,7 +103,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 123456,
                 100.0,
                 "Groceries",
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             )
         with self.assertRaises(TypeError):
             Transaction(
@@ -130,7 +130,7 @@ class TestPersonConstructor(unittest.TestCase):
                 123456,
                 100.0,
                 Category("Groceries"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             ),
             Transaction(
                 date(2022, 1, 2),
@@ -138,7 +138,7 @@ class TestPersonConstructor(unittest.TestCase):
                 789012,
                 50.0,
                 Category("Dining & Drinks"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             ),
         ]
         person = Person(name, email, account_numbers, transactions)
@@ -259,7 +259,7 @@ class TestFromRow(unittest.TestCase):
             "Description": "MADCATS DANCE",
             "Category": "R & T Shared",
             "Note": "",
-            "Ignored From": "",
+            "Ignored From": "budget",
             "Tax Deductible": "",
         }
         test_result = Transaction.from_row(row)
@@ -274,7 +274,7 @@ class TestFromRow(unittest.TestCase):
             1313,
             17.0,
             Category.OTHER,
-            NotIgnoredFrom.NOT_IGNORED,
+            IgnoredFrom.BUDGET,
         )
         expected_result_attrs = []
         for attr in dir(expected_result):
@@ -319,7 +319,7 @@ class TestFromRow(unittest.TestCase):
             "Description": "TIKICAT BAR",
             "Category": "Dining & Drinks",
             "Note": "",
-            "Ignored From": "budget",
+            "Ignored From": "cats",
             "Tax Deductible": "",
         }
         test_result = Transaction.from_row(row)
@@ -409,7 +409,7 @@ class TestParse(unittest.TestCase):
             1313,
             17.0,
             Category.OTHER,
-            NotIgnoredFrom.NOT_IGNORED,
+            IgnoredFrom.NOTHING,
         )
         mock_from_row = MagicMock(return_value=mock_transaction)
         with patch("lambda_function.src.main.Transaction.from_row", mock_from_row):
@@ -438,7 +438,7 @@ class TestCalculateExpenses(unittest.TestCase):
                     1313,
                     17.0,
                     Category.OTHER,  # just for the OTHER category
-                    NotIgnoredFrom.NOT_IGNORED,
+                    IgnoredFrom.NOTHING,
                 ),
                 Transaction(
                     date(2023, 9, 1),
@@ -446,7 +446,7 @@ class TestCalculateExpenses(unittest.TestCase):
                     1313,
                     17.0,
                     Category.OTHER,
-                    NotIgnoredFrom.NOT_IGNORED,
+                    IgnoredFrom.NOTHING,
                 ),
             ],
         )

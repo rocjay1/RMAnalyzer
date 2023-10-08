@@ -189,17 +189,10 @@ def build_category_enum(config=None):
 Category = build_category_enum()
 
 
-class NotIgnoredFrom(Enum):
-    """
-    An enumeration representing the different types of objects that should not be ignored
-    by the RMAnalyzer.
-
-    Attributes:
-        NOT_IGNORED (str): A string representing the type of object that should not be ignored.
-    """
-
-    # Rows with an empty string in the Ignored From column should not be ignored
-    NOT_IGNORED = str()
+class IgnoredFrom(Enum):
+    BUDGET = "budget"
+    EVERYTHING = "everything"
+    NOTHING = str()
 
 
 class Transaction:
@@ -212,7 +205,7 @@ class Transaction:
         account_number (int): The account number associated with the transaction.
         amount (float): The amount of the transaction.
         category (Category): The category of the transaction.
-        ignore (NotIgnoredFrom): The source of the transaction.
+        ignore (IgnoredFrom): The source of the transaction.
     """
 
     def __init__(self, transact_date, name, account_number, amount, category, ignore):
@@ -235,9 +228,9 @@ class Transaction:
                 raise TypeError(
                     f"category should be a Category object, got {type(category).__name__}"
                 )
-            if not isinstance(ignore, NotIgnoredFrom):
+            if not isinstance(ignore, IgnoredFrom):
                 raise TypeError(
-                    f"ignore should be a NotIgnoredFrom object, got {type(ignore).__name__}"
+                    f"ignore should be a IgnoredFrom object, got {type(ignore).__name__}"
                 )
 
             self.date = transact_date
@@ -267,7 +260,7 @@ class Transaction:
             transaction_account_number = int(row["Account Number"])
             transaction_amount = float(row["Amount"])
             transaction_category = Category(row["Category"])
-            transaction_ignore = NotIgnoredFrom(row["Ignored From"])
+            transaction_ignore = IgnoredFrom(row["Ignored From"])
 
             return Transaction(
                 transaction_date,
@@ -437,8 +430,8 @@ class Summary:
         """
         for transaction in parsed_transactions:
             if (
-                transaction.account_number
-                in person.account_numbers
+                transaction.account_number in person.account_numbers
+                and transaction.ignore == IgnoredFrom.NOTHING
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):

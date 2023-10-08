@@ -17,5 +17,12 @@
             "Email": "vcbarr1@gmail.com"
         }
     ],
-    "Owner": "jasonroc19@gmail.com"
+    "Owner": "jasonroc19@gmail.com",
+    "Categories": {
+        "DINING": "Dining & Drinks",
+        "GROCERIES": "Groceries",
+        "PETS": "Pets",
+        "BILLS": "Bills & Utilities",
+        "OTHER": "R & T Shared"
+    }
 }

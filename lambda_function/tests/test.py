@@ -2,7 +2,7 @@
 # Desc: Unit tests for RMAnalyzer
 # Author: Rocco Davino
 
-import sys
+
 import json
 from datetime import date
 import unittest
@@ -24,6 +24,13 @@ CONFIG = {
         },
     ],
     "Owner": "bebas@gmail.com",
+    "Categories": {
+        "DINING": "Dining & Drinks",
+        "GROCERIES": "Groceries",
+        "PETS": "Pets",
+        "BILLS": "Bills & Utilities",
+        "OTHER": "R & T Shared",
+    },
 }
 GARBAGE = "***THIS IS A GARBAGE SPREADSHEET***"
 
@@ -583,7 +590,9 @@ class TestAnalyzeFile(unittest.TestCase):
         # Use patch to replace the real function/class with our mocks
         with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file), patch(
             "lambda_function.src.main.SpreadsheetSummary", mock_spreadsheet_summary
-        ), patch("lambda_function.src.main.EmailGenerator", mock_email_generator), patch(
+        ), patch(
+            "lambda_function.src.main.EmailGenerator", mock_email_generator
+        ), patch(
             "lambda_function.src.main.send_email", mock_send_email
         ):
             analyze_file(file_path)
@@ -637,6 +646,50 @@ class TestParseDateFromFilename(unittest.TestCase):
         filename = "expenses_2021-12.csv"
         with self.assertRaises(AttributeError):
             parse_date_from_filename(filename)
+
+
+# Test build_category_enum
+class TestBuildCategoryEnum(unittest.TestCase):
+    def test_build_category_enum_valid_config(self):
+        config = CONFIG
+        category_enum = build_category_enum(config)
+        expected_enum = {
+            "DINING": "Dining & Drinks",
+            "GROCERIES": "Groceries",
+            "PETS": "Pets",
+            "BILLS": "Bills & Utilities",
+            "OTHER": "R & T Shared",
+        }
+        # Get the keys and values of the enums
+        category_enum_keys = []
+        category_enum_values = []
+        for key in category_enum:
+            category_enum_keys.append(key.name)
+            category_enum_values.append(key.value)
+        expected_enum_keys = []
+        expected_enum_values = []
+        for k, v in expected_enum.items():
+            expected_enum_keys.append(k)
+            expected_enum_values.append(v)
+        # Assert the keys and values match
+        self.assertListEqual(category_enum_keys, expected_enum_keys)
+        self.assertListEqual(category_enum_values, expected_enum_values)
+
+    def test_build_category_enum_invalid_config_key(self):
+        # Test with an invalid config
+        bad_config = {"Cats": None}
+        with self.assertRaises(KeyError):
+            build_category_enum(bad_config)
+
+    def test_build_category_enum_invalid_config_value(self):
+        bad_config = {"Categories": ["bad", "config"]}
+        with self.assertRaises(TypeError):
+            build_category_enum(bad_config)
+
+    def test_build_category_enum_invalid_category_value(self):
+        bad_config = {"Categories": {"DINING": ["bad", "config"]}}
+        with self.assertRaises(TypeError):
+            build_category_enum(bad_config)
 
 
 def main():

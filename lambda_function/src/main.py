@@ -38,10 +38,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG = {
-    "Bucket": "rm-analyzer-config-prd",
-    "Key": "config.json",
-}  # Needs to match S3 bucket/key from setup.sh
+CONFIG_PATH = 'config\\config.json'
 
 
 # HELPER FUNCTIONS
@@ -58,27 +55,23 @@ def format_money_helper(num):
     return MONEY_FORMAT.format(num)
 
 
-def load_config(config=None):
+def load_config(config_path=None):
     """
-    Loads the configuration file from an S3 bucket and returns it as a dictionary.
+    Load configuration from a JSON file.
 
-    Args:
-        config (dict): A dictionary containing the S3 bucket and key where the
-        configuration file is stored.
-
-    Returns:
-        dict: A dictionary containing the configuration settings.
-
-    Raises:
-        ClientError: If there is an error accessing the S3 bucket.
-        JSONDecodeError: If there is an error decoding the JSON configuration file.
+    :param config: Path to the JSON configuration file. If None, the default CONFIG_PATH will be used.
+    :type config: str or None
+    :return: A dictionary containing the configuration data.
+    :rtype: dict
+    :raises FileNotFoundError: If the specified configuration file does not exist.
+    :raises json.JSONDecodeError: If the specified configuration file is not a valid JSON file.
     """
-    if config is None:
-        config = CONFIG
+    if config_path is None:
+        config_path = CONFIG_PATH
     try:
-        file_content = read_s3_file(config["Bucket"], config["Key"])
-        return json.loads(file_content)
-    except (exceptions.ClientError, json.JSONDecodeError) as ex:
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            return json.load(config_file)
+    except (FileNotFoundError, json.JSONDecodeError) as ex:
         logger.error("Error loading config: %s", ex)
         raise
 
@@ -181,9 +174,7 @@ def build_category_enum(config=None):
 
 
 # CLASSES
-with open("config\\config.json", "r", encoding="utf-8") as config_file:
-    config = json.load(config_file)
-    Category = build_category_enum(config)
+Category = build_category_enum()
 
 
 class NotIgnoredFrom(Enum):

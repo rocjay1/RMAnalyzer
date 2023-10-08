@@ -121,7 +121,10 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
             Destination={"ToAddresses": to_addresses},
             Message={
                 "Subject": {"Data": subject},
-                "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
+                "Body": {
+                    "Html": {"Data": html_body}, 
+                    "Text": {"Data": text_body}
+                },
             },
         )
         return response
@@ -130,7 +133,6 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         raise
 
 
-# Parse the date from the filename
 def parse_date_from_filename(filename):
     """
     Parses a date string from a given filename using a regular expression.
@@ -147,7 +149,7 @@ def parse_date_from_filename(filename):
     date_regex = re.compile(r"\d{4}-\d{2}-\d{2}")
     try:
         return datetime.strptime(
-            date_regex.search(filename).group(0), "%Y-%m-%d"
+            date_regex.search(filename).group(0), DATE_FORMAT
         ).date()
     except AttributeError as ex:
         logger.error("Error parsing date from filename: %s", ex)
@@ -156,7 +158,17 @@ def parse_date_from_filename(filename):
 
 def build_category_enum(config=None):
     """
-    Builds an enumeration representing the different categories of expenses.
+    Builds an Enum object representing the categories defined in the configuration.
+
+    Args:
+        config (dict): A dictionary containing the configuration. If None, the default configuration will be loaded.
+
+    Returns:
+        Enum: An Enum object representing the categories defined in the configuration.
+
+    Raises:
+        KeyError: If the 'Categories' key is missing from the configuration.
+        TypeError: If the 'Categories' value is not a dictionary or if any of the values in the 'Categories' dictionary are not strings.
     """
     if config is None:
         config = load_config()

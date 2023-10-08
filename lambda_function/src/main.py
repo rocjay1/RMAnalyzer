@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG = {"Bucket": "rm-analyzer-config-prd", "Key": "config.json"}  # Needs to match S3 bucket/key from setup.sh
+CONFIG_PATH = "config\\config.json"
 
 
 # HELPER FUNCTIONS
@@ -55,27 +55,23 @@ def format_money_helper(num):
     return MONEY_FORMAT.format(num)
 
 
-def load_config(config=None):
+def load_config(config_path=None):
     """
-    Loads the configuration file from an S3 bucket and returns it as a dictionary.
+    Load configuration from a JSON file.
 
-    Args:
-        config (dict): A dictionary containing the S3 bucket and key where the
-        configuration file is stored.
-
-    Returns:
-        dict: A dictionary containing the configuration settings.
-
-    Raises:
-        ClientError: If there is an error accessing the S3 bucket.
-        JSONDecodeError: If there is an error decoding the JSON configuration file.
+    :param config: Path to the JSON configuration file. If None, the default CONFIG_PATH will be used.
+    :type config: str or None
+    :return: A dictionary containing the configuration data.
+    :rtype: dict
+    :raises FileNotFoundError: If the specified configuration file does not exist.
+    :raises json.JSONDecodeError: If the specified configuration file is not a valid JSON file.
     """
-    if config is None:
-        config = CONFIG
+    if config_path is None:
+        config_path = CONFIG_PATH
     try:
-        file_content = read_s3_file(config["Bucket"], config["Key"])
-        return json.loads(file_content)
-    except (exceptions.ClientError, json.JSONDecodeError) as ex:
+        with open(config_path, "r", encoding="utf-8") as config_file:
+            return json.load(config_file)
+    except (FileNotFoundError, json.JSONDecodeError) as ex:
         logger.error("Error loading config: %s", ex)
         raise
 
@@ -122,27 +118,17 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
     try:
         response = ses.send_email(
             Source=source,
-            Destination={
-                "ToAddresses": to_addresses
-            },
+            Destination={"ToAddresses": to_addresses},
             Message={
-                "Subject": {
-                    "Data": subject
-                },
-                "Body": {
-                    "Html": {
-                        "Data": html_body
-                    },
-                    "Text": {
-                        "Data": text_body
-                    }
-                },
+                "Subject": {"Data": subject},
+                "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
             },
         )
         return response
     except exceptions.ClientError as ex:
         logger.error("Error sending email: %s", ex)
         raise
+
 
 # Parse the date from the filename
 def parse_date_from_filename(filename):
@@ -159,36 +145,36 @@ def parse_date_from_filename(filename):
         AttributeError: If the regular expression fails to match the filename.
     """
     date_regex = re.compile(r"\d{4}-\d{2}-\d{2}")
-    try :
-        return datetime.strptime(date_regex.search(filename).group(0), "%Y-%m-%d").date()
+    try:
+        return datetime.strptime(
+            date_regex.search(filename).group(0), "%Y-%m-%d"
+        ).date()
     except AttributeError as ex:
         logger.error("Error parsing date from filename: %s", ex)
         raise
 
+
+def build_category_enum(config=None):
+    """
+    Builds an enumeration representing the different categories of expenses.
+    """
+    if config is None:
+        config = load_config()
+    try:
+        categories = config["Categories"]
+        if not isinstance(categories, dict):
+            raise TypeError("Categories should be a dictionary")
+        # If the categories dict values are not strings raise a TypeError
+        if not all(isinstance(v, str) for v in categories.values()):
+            raise TypeError("Categories should be a dictionary of strings")
+        return Enum("Category", config["Categories"])
+    except (KeyError, TypeError):
+        logger.error("Invalid or missing 'Categories' in configuration.")
+        raise
+
+
 # CLASSES
-class Category(Enum):
-    """
-    A class representing the different categories of expenses.
-
-    Attributes
-    ----------
-    DINING : str
-        The category for dining and drinks expenses.
-    GROCERIES : str
-        The category for groceries expenses.
-    PETS : str
-        The category for pets expenses.
-    BILLS : str
-        The category for bills and utilities expenses.
-    OTHER : str
-        The category for other shared expenses.
-    """
-
-    DINING = "Dining & Drinks"
-    GROCERIES = "Groceries"
-    PETS = "Pets"
-    BILLS = "Bills & Utilities"
-    OTHER = "R & T Shared"
+Category = build_category_enum()
 
 
 class NotIgnoredFrom(Enum):
@@ -374,9 +360,9 @@ class Summary:
         self.date = summary_date
 
         try:
-            self.owner = config["Owner"]
+            self.owner = config["OwnerAddress"]
         except (KeyError, TypeError):
-            logger.error("Invalid or missing 'Owner' in configuration.")
+            logger.error("Invalid or missing 'OwnerAddress' in configuration.")
             raise
 
         try:
@@ -439,7 +425,8 @@ class Summary:
         """
         for transaction in parsed_transactions:
             if (
-                transaction.account_number in person.account_numbers
+                transaction.account_number
+                in person.account_numbers
                 # Commenting out the following line will include transactions from previous months
                 # and transaction.date.month == self.date.month
             ):

@@ -2,7 +2,7 @@
 # Desc: Unit tests for RMAnalyzer
 # Author: Rocco Davino
 
-import sys
+
 import json
 from datetime import date
 import unittest
@@ -23,7 +23,14 @@ CONFIG = {
             "Email": "tuttifruity@hotmail.com",
         },
     ],
-    "Owner": "bebas@gmail.com",
+    "OwnerAddress": "bebas@gmail.com",
+    "Categories": {
+        "DINING": "Dining & Drinks",
+        "GROCERIES": "Groceries",
+        "PETS": "Pets",
+        "BILLS": "Bills & Utilities",
+        "OTHER": "R & T Shared",
+    },
 }
 GARBAGE = "***THIS IS A GARBAGE SPREADSHEET***"
 
@@ -190,32 +197,26 @@ class TestSummaryConstructor(unittest.TestCase):
 
 # Test the load_config function
 class TestLoadConfig(unittest.TestCase):
-    # Test load_config assuming read_s3_file threw an exception
-    def test_load_config_s3_error(self):
-        mock_read_s3_file = MagicMock(
-            side_effect=exceptions.ClientError({"Error": {}}, "test")
-        )
-        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file):
-            with self.assertRaises(exceptions.ClientError):
-                load_config()
-
-    # Test load_config assuming read_s3_file returned a bad string
+    # Test load_config the config file is bad JSON
     def test_load_config_bad_json(self):
-        mock_read_s3_file = MagicMock(return_value="bad config")
-        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file):
+        mock_fp = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
+        with patch("json.load", mock_fp):
             with self.assertRaises(json.decoder.JSONDecodeError):
-                load_config()
+                load_config(mock_fp)
 
-    # Assuming read_s3_file returned a good string, assert load_config returned the correct dict
-    # Assert read_s3_file was called with "Bucket": "rm-analyzer-config", "Key": "config.json"
+    # Test load_config assuming the file path is bad
+    def test_load_config_bad_file(self):
+        with self.assertRaises(FileNotFoundError):
+            load_config("bad_file")
+
+    # Assuming json.load returned a good string, assert load_config returned the correct dict
+    # Assert json.load was called with an fp object
     def test_load_config_valid_read(self):
-        mock_read_s3_file = MagicMock(return_value=json.dumps(CONFIG))
-        with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file):
+        mock_fp = MagicMock(return_value=CONFIG)
+        with patch("json.load", mock_fp):
             result = load_config()
+            mock_fp.assert_called_once()
             self.assertEqual(result, CONFIG)
-            mock_read_s3_file.assert_called_once_with(
-                "rm-analyzer-config-prd", "config.json"
-            )
 
 
 # Test the SpreadsheetSummary class constructor
@@ -350,7 +351,7 @@ class TestInitializePeople(unittest.TestCase):
                     "Email": "boygeorge@gmail.com",
                 }
             ],
-            "Owner": "bebas@gmail.com",
+            "OwnerAddress": "bebas@gmail.com",
         }
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_config_keys)
@@ -364,7 +365,7 @@ class TestInitializePeople(unittest.TestCase):
                     "Email": "boygeorge@gmail.com",
                 }
             ],
-            "Owner": "bebas@gmail.com",
+            "OwnerAddress": "bebas@gmail.com",
         }
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), bad_config_values)
@@ -583,7 +584,9 @@ class TestAnalyzeFile(unittest.TestCase):
         # Use patch to replace the real function/class with our mocks
         with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file), patch(
             "lambda_function.src.main.SpreadsheetSummary", mock_spreadsheet_summary
-        ), patch("lambda_function.src.main.EmailGenerator", mock_email_generator), patch(
+        ), patch(
+            "lambda_function.src.main.EmailGenerator", mock_email_generator
+        ), patch(
             "lambda_function.src.main.send_email", mock_send_email
         ):
             analyze_file(file_path)
@@ -637,6 +640,50 @@ class TestParseDateFromFilename(unittest.TestCase):
         filename = "expenses_2021-12.csv"
         with self.assertRaises(AttributeError):
             parse_date_from_filename(filename)
+
+
+# Test build_category_enum
+class TestBuildCategoryEnum(unittest.TestCase):
+    def test_build_category_enum_valid_config(self):
+        config = CONFIG
+        category_enum = build_category_enum(config)
+        expected_enum = {
+            "DINING": "Dining & Drinks",
+            "GROCERIES": "Groceries",
+            "PETS": "Pets",
+            "BILLS": "Bills & Utilities",
+            "OTHER": "R & T Shared",
+        }
+        # Get the keys and values of the enums
+        category_enum_keys = []
+        category_enum_values = []
+        for key in category_enum:
+            category_enum_keys.append(key.name)
+            category_enum_values.append(key.value)
+        expected_enum_keys = []
+        expected_enum_values = []
+        for k, v in expected_enum.items():
+            expected_enum_keys.append(k)
+            expected_enum_values.append(v)
+        # Assert the keys and values match
+        self.assertListEqual(category_enum_keys, expected_enum_keys)
+        self.assertListEqual(category_enum_values, expected_enum_values)
+
+    def test_build_category_enum_invalid_config_key(self):
+        # Test with an invalid config
+        bad_config = {"Cats": None}
+        with self.assertRaises(KeyError):
+            build_category_enum(bad_config)
+
+    def test_build_category_enum_invalid_config_value(self):
+        bad_config = {"Categories": ["bad", "config"]}
+        with self.assertRaises(TypeError):
+            build_category_enum(bad_config)
+
+    def test_build_category_enum_invalid_category_value(self):
+        bad_config = {"Categories": {"DINING": ["bad", "config"]}}
+        with self.assertRaises(TypeError):
+            build_category_enum(bad_config)
 
 
 def main():

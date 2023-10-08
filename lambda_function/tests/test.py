@@ -16,14 +16,18 @@ from lambda_function.src.main import *
 
 CONFIG = {
     "People": [
-        {"Name": "George", "Accounts": [1234, 4321], "Email": "boygeorge@gmail.com"},
+        {
+            "Name": "George", 
+            "Accounts": [1234, 4321], 
+            "Email": "boygeorge@gmail.com"
+        },
         {
             "Name": "Tootie",
             "Accounts": [1313, 2121],
             "Email": "tuttifruity@hotmail.com",
         },
     ],
-    "OwnerAddress": "bebas@gmail.com",
+    "OwnerEmail": "bebas@gmail.com",
     "Categories": {
         "DINING": "Dining & Drinks",
         "GROCERIES": "Groceries",
@@ -351,7 +355,7 @@ class TestInitializePeople(unittest.TestCase):
                     "Email": "boygeorge@gmail.com",
                 }
             ],
-            "OwnerAddress": "bebas@gmail.com",
+            "OwnerEmail": "bebas@gmail.com",
         }
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), bad_config_keys)
@@ -365,7 +369,7 @@ class TestInitializePeople(unittest.TestCase):
                     "Email": "boygeorge@gmail.com",
                 }
             ],
-            "OwnerAddress": "bebas@gmail.com",
+            "OwnerEmail": "bebas@gmail.com",
         }
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), bad_config_values)

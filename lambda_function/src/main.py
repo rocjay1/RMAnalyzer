@@ -360,9 +360,9 @@ class Summary:
         self.date = summary_date
 
         try:
-            self.owner = config["OwnerAddress"]
+            self.owner = config["OwnerEmail"]
         except (KeyError, TypeError):
-            logger.error("Invalid or missing 'OwnerAddress' in configuration.")
+            logger.error("Invalid or missing 'OwnerEmail' in configuration.")
             raise
 
         try:

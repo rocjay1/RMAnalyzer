@@ -16,11 +16,7 @@ from lambda_function.src.main import *
 
 CONFIG = {
     "People": [
-        {
-            "Name": "George", 
-            "Accounts": [1234, 4321], 
-            "Email": "boygeorge@gmail.com"
-        },
+        {"Name": "George", "Accounts": [1234, 4321], "Email": "boygeorge@gmail.com"},
         {
             "Name": "Tootie",
             "Accounts": [1313, 2121],
@@ -39,143 +35,173 @@ CONFIG = {
 GARBAGE = "***THIS IS A GARBAGE SPREADSHEET***"
 
 
+# Test the load_config function
+class TestLoadConfig(unittest.TestCase):
+    # Test load_config with a bad JSON file
+    def test_load_config_bad_json(self):
+        mock_fp = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
+        with patch("json.load", mock_fp):
+            with self.assertRaises(json.decoder.JSONDecodeError):
+                load_config(mock_fp)
+
+    # Test load_config with a bad file path
+    def test_load_config_bad_file(self):
+        with self.assertRaises(FileNotFoundError):
+            load_config("bad_file")
+
+    # Assuming json.load returned a good dict, assert load_config returned the correct dict
+    # Assert json.load was called with an fp object
+    def test_load_config_good_json(self):
+        mock_fp = MagicMock(return_value=CONFIG)
+        with patch("json.load", mock_fp):
+            result = load_config()
+            mock_fp.assert_called_once()
+            self.assertEqual(result, CONFIG)
+
+
 # Test the Transaction class constructor
 class TestTransactionConstructor(unittest.TestCase):
+    def setUp(self):
+        self.transact_date = date(2022, 1, 1)
+        self.name = "John Doe"
+        self.account_number = 123456
+        self.amount = 100.0
+        self.category = Category("Groceries")
+        self.ignore = IgnoredFrom("")
+        self.transaction = Transaction(
+            self.transact_date,
+            self.name,
+            self.account_number,
+            self.amount,
+            self.category,
+            self.ignore,
+        )
+
     def test_constructor(self):
         # Test valid input
-        transact_date = date(2022, 1, 1)
-        name = "John Doe"
-        account_number = 123456
-        amount = 100.0
-        category = Category("Groceries")
-        ignore = NotIgnoredFrom("")
-        transaction = Transaction(
-            transact_date, name, account_number, amount, category, ignore
-        )
-        self.assertEqual(transaction.date, transact_date)
-        self.assertEqual(transaction.name, name)
-        self.assertEqual(transaction.account_number, account_number)
-        self.assertEqual(transaction.amount, amount)
-        self.assertEqual(transaction.category, category)
-        self.assertEqual(transaction.ignore, ignore)
+        self.assertEqual(self.transaction.date, self.transact_date)
+        self.assertEqual(self.transaction.name, self.name)
+        self.assertEqual(self.transaction.account_number, self.account_number)
+        self.assertEqual(self.transaction.amount, self.amount)
+        self.assertEqual(self.transaction.category, self.category)
+        self.assertEqual(self.transaction.ignore, self.ignore)
 
         # Test invalid input
         with self.assertRaises(TypeError):
             Transaction(
                 "2022-01-01",
-                "John Doe",
-                123456,
-                100.0,
-                Category("Groceries"),
-                NotIgnoredFrom(""),
+                self.name,
+                self.account_number,
+                self.amount,
+                self.category,
+                self.ignore,
             )
         with self.assertRaises(TypeError):
             Transaction(
-                date(2022, 1, 1),
+                self.transact_date,
                 123456,
-                123456,
-                100.0,
-                Category("Groceries"),
-                NotIgnoredFrom(""),
+                self.account_number,
+                self.amount,
+                self.category,
+                self.ignore,
             )
         with self.assertRaises(TypeError):
             Transaction(
-                date(2022, 1, 1),
-                "John Doe",
+                self.transact_date,
+                self.name,
                 "123456",
-                100.0,
-                Category("Groceries"),
-                NotIgnoredFrom(""),
+                self.amount,
+                self.category,
+                self.ignore,
             )
         with self.assertRaises(TypeError):
             Transaction(
-                date(2022, 1, 1),
-                "John Doe",
-                123456,
+                self.transact_date,
+                self.name,
+                self.account_number,
                 "100.0",
-                Category("Groceries"),
-                NotIgnoredFrom(""),
+                self.category,
+                self.ignore,
             )
         with self.assertRaises(TypeError):
             Transaction(
-                date(2022, 1, 1),
-                "John Doe",
-                123456,
-                100.0,
+                self.transact_date,
+                self.name,
+                self.account_number,
+                self.amount,
                 "Groceries",
-                NotIgnoredFrom(""),
+                self.ignore,
             )
         with self.assertRaises(TypeError):
             Transaction(
-                date(2022, 1, 1),
-                "John Doe",
-                123456,
-                100.0,
-                Category("Groceries"),
+                self.transact_date,
+                self.name,
+                self.account_number,
+                self.amount,
+                self.category,
                 "budget",
             )
 
 
 # Test the Person class constructor
 class TestPersonConstructor(unittest.TestCase):
-    def test_constructor(self):
-        # Test valid input
-        name = "John Doe"
-        email = "johndoe@example.com"
-        account_numbers = [123456, 789012]
-        transactions = [
+    def setUp(self):
+        self.name = "John Doe"
+        self.email = "johndoe@example.com"
+        self.account_numbers = [123456, 789012]
+        self.transactions = [
             Transaction(
                 date(2022, 1, 1),
-                "John Doe",
+                "Apples",
                 123456,
                 100.0,
                 Category("Groceries"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             ),
             Transaction(
                 date(2022, 1, 2),
-                "Jane Doe",
+                "Joe's Bar",
                 789012,
                 50.0,
                 Category("Dining & Drinks"),
-                NotIgnoredFrom(""),
+                IgnoredFrom(""),
             ),
         ]
-        person = Person(name, email, account_numbers, transactions)
-        self.assertEqual(person.name, name)
-        self.assertEqual(person.email, email)
-        self.assertEqual(person.account_numbers, account_numbers)
-        self.assertEqual(person.transactions, transactions)
+        self.person = Person(
+            self.name, self.email, self.account_numbers, self.transactions
+        )
+
+    def test_constructor(self):
+        # Test valid input
+        self.assertEqual(self.person.name, self.name)
+        self.assertEqual(self.person.email, self.email)
+        self.assertEqual(self.person.account_numbers, self.account_numbers)
+        self.assertEqual(self.person.transactions, self.transactions)
 
         # Test invalid input
         with self.assertRaises(TypeError):
-            Person(123456, "johndoe@example.com", [123456, 789012], transactions)
+            Person(123456, self.email, self.account_numbers, self.transactions)
         with self.assertRaises(TypeError):
-            Person("John Doe", 123456, [123456, 789012], transactions)
+            Person(self.name, 123456, self.account_numbers, self.transactions)
         with self.assertRaises(TypeError):
-            Person("John Doe", "johndoe@example.com", [123456, "789012"], transactions)
+            Person(self.name, self.email, [123456, "789012"], self.transactions)
         with self.assertRaises(TypeError):
-            Person(
-                "John Doe",
-                "johndoe@example.com",
-                [123456, 789012],
-                ["invalid transaction"],
-            )
+            Person(self.name, self.email, self.account_numbers, ["invalid transaction"])
 
 
 # Test the Summary class constructor with different types of config
 class TestSummaryConstructor(unittest.TestCase):
     def setUp(self):
         self.good_config = CONFIG
-        self.bad_config_type = ["bad", "config"]  # config must be a dict
+        self.bad_config_type = ["bad", "config"]  # Config must be a dict
         self.bad_config_values = {
             "bad": "config"
-        }  # config must have People and Owner keys
+        }  # Config must have People and Owner keys
 
     def test_summary_constructor_from_config(self):
         summary = Summary(date.today(), config=self.good_config)
         self.assertEqual(summary.date, date.today())
-        # summary should contain 2 people, George and Tootie
+        # Summary should contain 2 people, George and Tootie
         self.assertEqual(len(summary.people), 2)
         self.assertEqual(summary.people[0].name, "George")
         self.assertEqual(summary.people[1].name, "Tootie")
@@ -185,6 +211,7 @@ class TestSummaryConstructor(unittest.TestCase):
         mock_load_config = MagicMock(return_value=self.good_config)
         with patch("lambda_function.src.main.load_config", mock_load_config):
             summary = Summary(date.today())
+            mock_load_config.assert_called_once()
             self.assertEqual(summary.date, date.today())
             self.assertEqual(len(summary.people), 2)
             self.assertEqual(summary.people[0].name, "George")
@@ -197,30 +224,6 @@ class TestSummaryConstructor(unittest.TestCase):
     def test_summary_constructor_bad_config_values(self):
         with self.assertRaises(KeyError):
             summary = Summary(date.today(), config=self.bad_config_values)
-
-
-# Test the load_config function
-class TestLoadConfig(unittest.TestCase):
-    # Test load_config the config file is bad JSON
-    def test_load_config_bad_json(self):
-        mock_fp = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
-        with patch("json.load", mock_fp):
-            with self.assertRaises(json.decoder.JSONDecodeError):
-                load_config(mock_fp)
-
-    # Test load_config assuming the file path is bad
-    def test_load_config_bad_file(self):
-        with self.assertRaises(FileNotFoundError):
-            load_config("bad_file")
-
-    # Assuming json.load returned a good string, assert load_config returned the correct dict
-    # Assert json.load was called with an fp object
-    def test_load_config_valid_read(self):
-        mock_fp = MagicMock(return_value=CONFIG)
-        with patch("json.load", mock_fp):
-            result = load_config()
-            mock_fp.assert_called_once()
-            self.assertEqual(result, CONFIG)
 
 
 # Test the SpreadsheetSummary class constructor
@@ -237,7 +240,8 @@ class TestSpreadsheetSummaryConstructor(unittest.TestCase):
         self.assertEqual(summary.people[0].name, "George")
         self.assertEqual(summary.people[1].name, "Tootie")
         # Make sure Tootie has 1 transaction and George has 0
-        # This implicitly tests add_transactions_from_spreadsheet and add_transactions
+        # This implicitly tests add_transactions_from_spreadsheet, add_transactions,
+        # and add_persons_transactions
         self.assertEqual(len(summary.people[0].transactions), 0)
         self.assertEqual(len(summary.people[1].transactions), 1)
 
@@ -259,7 +263,7 @@ class TestFromRow(unittest.TestCase):
             "Description": "MADCATS DANCE",
             "Category": "R & T Shared",
             "Note": "",
-            "Ignored From": "",
+            "Ignored From": "budget",
             "Tax Deductible": "",
         }
         test_result = Transaction.from_row(row)
@@ -274,7 +278,7 @@ class TestFromRow(unittest.TestCase):
             1313,
             17.0,
             Category.OTHER,
-            NotIgnoredFrom.NOT_IGNORED,
+            IgnoredFrom.BUDGET,
         )
         expected_result_attrs = []
         for attr in dir(expected_result):
@@ -319,7 +323,7 @@ class TestFromRow(unittest.TestCase):
             "Description": "TIKICAT BAR",
             "Category": "Dining & Drinks",
             "Note": "",
-            "Ignored From": "budget",
+            "Ignored From": "cats",
             "Tax Deductible": "",
         }
         test_result = Transaction.from_row(row)
@@ -409,7 +413,7 @@ class TestParse(unittest.TestCase):
             1313,
             17.0,
             Category.OTHER,
-            NotIgnoredFrom.NOT_IGNORED,
+            IgnoredFrom.NOTHING,
         )
         mock_from_row = MagicMock(return_value=mock_transaction)
         with patch("lambda_function.src.main.Transaction.from_row", mock_from_row):
@@ -438,7 +442,7 @@ class TestCalculateExpenses(unittest.TestCase):
                     1313,
                     17.0,
                     Category.OTHER,  # just for the OTHER category
-                    NotIgnoredFrom.NOT_IGNORED,
+                    IgnoredFrom.NOTHING,
                 ),
                 Transaction(
                     date(2023, 9, 1),
@@ -446,7 +450,7 @@ class TestCalculateExpenses(unittest.TestCase):
                     1313,
                     17.0,
                     Category.OTHER,
-                    NotIgnoredFrom.NOT_IGNORED,
+                    IgnoredFrom.NOTHING,
                 ),
             ],
         )

@@ -191,12 +191,12 @@ Category = build_category_enum()
 
 class IgnoredFrom(Enum):
     """
-    An enumeration of possible values for the `ignored_from` parameter in the `RMAnalyzer` class.
+    An enumeration of possible values for the `Ignored From` column of the spreadsheet.
 
     Attributes:
-        BUDGET (str): Indicates that budget data should be ignored.
-        EVERYTHING (str): Indicates that all data should be ignored.
-        NOTHING (str): Indicates that no data should be ignored.
+        BUDGET (str): Indicates that the transaction is ignored from budget.
+        EVERYTHING (str): Indicates that the transaction is ignored from everything.
+        NOTHING (str): Indicates that the transaction is not ignored.
     """
     BUDGET = "budget"
     EVERYTHING = "everything"

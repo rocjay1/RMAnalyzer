@@ -51,7 +51,7 @@ class TestLoadConfig(unittest.TestCase):
 
     # Assuming json.load returned a good dict, assert load_config returned the correct dict
     # Assert json.load was called with an fp object
-    def test_load_config_valid_read(self):
+    def test_load_config_good_json(self):
         mock_fp = MagicMock(return_value=CONFIG)
         with patch("json.load", mock_fp):
             result = load_config()

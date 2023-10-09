@@ -121,10 +121,7 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
             Destination={"ToAddresses": to_addresses},
             Message={
                 "Subject": {"Data": subject},
-                "Body": {
-                    "Html": {"Data": html_body}, 
-                    "Text": {"Data": text_body}
-                },
+                "Body": {"Html": {"Data": html_body}, "Text": {"Data": text_body}},
             },
         )
         return response
@@ -198,6 +195,7 @@ class IgnoredFrom(Enum):
         EVERYTHING (str): Indicates that the transaction is ignored from everything.
         NOTHING (str): Indicates that the transaction is not ignored.
     """
+
     BUDGET = "budget"
     EVERYTHING = "everything"
     NOTHING = str()
@@ -219,27 +217,17 @@ class Transaction:
     def __init__(self, transact_date, name, account_number, amount, category, ignore):
         try:
             if not isinstance(transact_date, date):
-                raise TypeError(
-                    f"date should be a datetime.date object, got {type(transact_date).__name__}"
-                )
+                raise TypeError("date should be a datetime.date object")
             if not isinstance(name, str):
-                raise TypeError(f"name should be a string, got {type(name).__name__}")
+                raise TypeError("name should be a string")
             if not isinstance(account_number, int):
-                raise TypeError(
-                    f"account_number should be an integer, got {type(account_number).__name__}"
-                )
+                raise TypeError("account_number should be an integer")
             if not isinstance(amount, float):
-                raise TypeError(
-                    f"amount should be a float, got {type(amount).__name__}"
-                )
+                raise TypeError("amount should be a float")
             if not isinstance(category, Category):
-                raise TypeError(
-                    f"category should be a Category object, got {type(category).__name__}"
-                )
+                raise TypeError("category should be a Category object")
             if not isinstance(ignore, IgnoredFrom):
-                raise TypeError(
-                    f"ignore should be a IgnoredFrom object, got {type(ignore).__name__}"
-                )
+                raise TypeError("ignore should be a IgnoredFrom object")
 
             self.date = transact_date
             self.name = name
@@ -298,9 +286,9 @@ class Person:
     def __init__(self, name, email, account_numbers, transactions=None):
         try:
             if not isinstance(name, str):
-                raise TypeError(f"name should be a string, got {type(name).__name__}")
+                raise TypeError("name should be a string")
             if not isinstance(email, str):
-                raise TypeError(f"email should be a string, got {type(email).__name__}")
+                raise TypeError("email should be a string")
             if not all(isinstance(num, int) for num in account_numbers):
                 raise TypeError("account_numbers should be a list of integers")
             if transactions and not all(
@@ -332,11 +320,11 @@ class Person:
 
         Args:
             category (str, optional): The category for which to calculate expenses.
-                Defaults to None.
+            Defaults to None.
 
         Returns:
             float: The total expenses for the given category or for all categories
-                if no category is specified.
+            if no category is specified.
         """
         if category:
             return sum(t.amount for t in self.transactions if t.category == category)

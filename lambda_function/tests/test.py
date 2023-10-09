@@ -16,11 +16,7 @@ from lambda_function.src.main import *
 
 CONFIG = {
     "People": [
-        {
-            "Name": "George", 
-            "Accounts": [1234, 4321], 
-            "Email": "boygeorge@gmail.com"
-        },
+        {"Name": "George", "Accounts": [1234, 4321], "Email": "boygeorge@gmail.com"},
         {
             "Name": "Tootie",
             "Accounts": [1313, 2121],
@@ -73,14 +69,14 @@ class TestTransactionConstructor(unittest.TestCase):
         self.category = Category("Groceries")
         self.ignore = IgnoredFrom("")
         self.transaction = Transaction(
-            self.transact_date, 
-            self.name, 
-            self.account_number, 
-            self.amount, 
-            self.category, 
-            self.ignore
+            self.transact_date,
+            self.name,
+            self.account_number,
+            self.amount,
+            self.category,
+            self.ignore,
         )
-    
+
     def test_constructor(self):
         # Test valid input
         self.assertEqual(self.transaction.date, self.transact_date)
@@ -172,10 +168,7 @@ class TestPersonConstructor(unittest.TestCase):
             ),
         ]
         self.person = Person(
-            self.name, 
-            self.email, 
-            self.account_numbers, 
-            self.transactions
+            self.name, self.email, self.account_numbers, self.transactions
         )
 
     def test_constructor(self):
@@ -187,33 +180,13 @@ class TestPersonConstructor(unittest.TestCase):
 
         # Test invalid input
         with self.assertRaises(TypeError):
-            Person(
-                123456, 
-                self.email, 
-                self.account_numbers, 
-                self.transactions
-            )
+            Person(123456, self.email, self.account_numbers, self.transactions)
         with self.assertRaises(TypeError):
-            Person(
-                self.name, 
-                123456, 
-                self.account_numbers, 
-                self.transactions
-            )
+            Person(self.name, 123456, self.account_numbers, self.transactions)
         with self.assertRaises(TypeError):
-            Person(
-                self.name, 
-                self.email, 
-                [123456, "789012"], 
-                self.transactions
-            )
+            Person(self.name, self.email, [123456, "789012"], self.transactions)
         with self.assertRaises(TypeError):
-            Person(
-                self.name, 
-                self.email, 
-                self.account_numbers, 
-                ["invalid transaction"]
-            )
+            Person(self.name, self.email, self.account_numbers, ["invalid transaction"])
 
 
 # Test the Summary class constructor with different types of config

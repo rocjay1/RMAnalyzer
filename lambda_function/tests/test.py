@@ -16,7 +16,11 @@ from lambda_function.src.main import *
 
 CONFIG = {
     "People": [
-        {"Name": "George", "Accounts": [1234, 4321], "Email": "boygeorge@gmail.com"},
+        {
+            "Name": "George", 
+            "Accounts": [1234, 4321], 
+            "Email": "boygeorge@gmail.com"
+        },
         {
             "Name": "Tootie",
             "Accounts": [1313, 2121],
@@ -32,31 +36,141 @@ CONFIG = {
         "OTHER": "R & T Shared",
     },
 }
-GARBAGE = "***THIS IS A GARBAGE SPREADSHEET***"
 
 
+# Test helper functions
 # Test the load_config function
 class TestLoadConfig(unittest.TestCase):
-    # Test load_config with a bad JSON file
+    def setUp(self):
+        self.config = CONFIG
+
     def test_load_config_bad_json(self):
         mock_fp = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
         with patch("json.load", mock_fp):
             with self.assertRaises(json.decoder.JSONDecodeError):
                 load_config(mock_fp)
 
-    # Test load_config with a bad file path
     def test_load_config_bad_file(self):
         with self.assertRaises(FileNotFoundError):
             load_config("bad_file")
 
-    # Assuming json.load returned a good dict, assert load_config returned the correct dict
-    # Assert json.load was called with an fp object
     def test_load_config_good_json(self):
-        mock_fp = MagicMock(return_value=CONFIG)
+        mock_fp = MagicMock(return_value=self.config)
         with patch("json.load", mock_fp):
             result = load_config()
             mock_fp.assert_called_once()
-            self.assertEqual(result, CONFIG)
+            self.assertEqual(result, self.config)
+
+
+# Test the read_s3_file function
+class TestReadS3File(unittest.TestCase):
+    def setUp(self):
+        self.bucket = "test-bucket"
+        self.key = "test-key"
+        self.data = "Hello, World!"
+
+    @mock_s3
+    def test_read_s3_file_success(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
+        result = read_s3_file(self.bucket, self.key)
+        self.assertEqual(result, self.data)
+
+    @mock_s3
+    def test_read_s3_file_key_failure(self):
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=self.bucket)
+        with self.assertRaises(exceptions.ClientError):
+            read_s3_file(self.bucket, "nonexistent-key")
+
+    @mock_s3
+    def test_read_s3_file_bucket_failure(self):
+        s3 = boto3.client("s3")
+        with self.assertRaises(exceptions.ClientError):
+            read_s3_file("nonexistent-bucket", self.key)
+
+
+# Test the send_email function
+class TestSendEmail(unittest.TestCase):
+    def setUp(self):
+        self.source = "bebas@gmail.com"
+        self.to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
+        self.subject = "Test"
+        self.html_body = "<p>Test</p>"
+
+    @mock_ses
+    def test_send_email(self):
+        ses = boto3.client("ses", region_name="us-east-1")
+        ses.verify_email_identity(EmailAddress="bebas@gmail.com")
+        response = send_email(self.source, self.to_addresses, self.subject, self.html_body)
+        self.assertIn("MessageId", response)
+
+    @mock_ses
+    def test_send_email_bad_source(self):
+        ses = boto3.client("ses", region_name="us-east-1")
+        with self.assertRaises(exceptions.ClientError):
+            send_email(self.source, self.to_addresses, self.subject, self.html_body)
+
+
+# Test the parse_date_from_filename function
+class TestParseDateFromFilename(unittest.TestCase):
+    def test_parse_date_from_filename(self):
+        f1 = "2022-01-31.csv"
+        expected_date = date(2022, 1, 31)
+        self.assertEqual(parse_date_from_filename(f1), expected_date)
+
+        f2 = "2023-09-23T15_17_14.839Z-transactions.csv"
+        expected_date = date(2023, 9, 23)
+        self.assertEqual(parse_date_from_filename(f2), expected_date)
+
+    def test_parse_date_from_filename_bad_filename(self):
+        f = "expenses_2021-12.csv"
+        with self.assertRaises(AttributeError):
+            parse_date_from_filename(f)
+
+
+# Test build_category_enum
+class TestBuildCategoryEnum(unittest.TestCase):
+    def setUp(self):
+        self.config = CONFIG
+
+    def test_build_category_enum_valid_config(self):
+        category_enum = build_category_enum(self.config)
+        expected_enum = {
+            "DINING": "Dining & Drinks",
+            "GROCERIES": "Groceries",
+            "PETS": "Pets",
+            "BILLS": "Bills & Utilities",
+            "OTHER": "R & T Shared",
+        }
+        # Get the keys and values of the enums
+        category_enum_keys, category_enum_values = [], []
+        for key in category_enum:
+            category_enum_keys.append(key.name)
+            category_enum_values.append(key.value)
+        expected_enum_keys, expected_enum_values = [], []
+        for k, v in expected_enum.items():
+            expected_enum_keys.append(k)
+            expected_enum_values.append(v)
+        # Assert the keys and values match
+        self.assertListEqual(category_enum_keys, expected_enum_keys)
+        self.assertListEqual(category_enum_values, expected_enum_values)
+
+    def test_build_category_enum_invalid_config_key(self):
+        c = {"bad": "config"}
+        with self.assertRaises(KeyError):
+            build_category_enum(c)
+
+    def test_build_category_enum_invalid_config_value(self):
+        c = {"Categories": ["bad", "config"]}
+        with self.assertRaises(TypeError):
+            build_category_enum(c)
+
+    def test_build_category_enum_invalid_category_value(self):
+        c = {"Categories": {"DINING": ["bad", "config"]}}
+        with self.assertRaises(TypeError):
+            build_category_enum(c)
 
 
 # Test the Transaction class constructor
@@ -143,6 +257,50 @@ class TestTransactionConstructor(unittest.TestCase):
             )
 
 
+# Test the from_row function
+class TestFromRow(unittest.TestCase):
+    # Test that a typical row is parsed correctly as a Transaction object
+    def test_from_row(self):
+        r = {
+            "Date": "2023-08-31",
+            "Original Date": "2023-08-31",
+            "Account Type": "Credit Card",
+            "Account Name": "SavorOne",
+            "Account Number": "1313",
+            "Institution Name": "Capital One",
+            "Name": "MADCATS DANCE",
+            "Custom Name": "",
+            "Amount": "17",
+            "Description": "MADCATS DANCE",
+            "Category": "R & T Shared",
+            "Note": "",
+            "Ignored From": "everything",
+            "Tax Deductible": "",
+        }
+
+        test_result = Transaction.from_row(r)
+        expected_result = Transaction(
+            date(2023, 8, 31),
+            "MADCATS DANCE",
+            1313,
+            17.0,
+            Category.OTHER,
+            IgnoredFrom.EVERYTHING,
+        )
+
+        test_result_attrs = []
+        for attr in dir(test_result):
+            if not attr.startswith("__"):
+                test_result_attrs.append(attr)
+
+        expected_result_attrs = []
+        for attr in dir(expected_result):
+            if not attr.startswith("__"):
+                expected_result_attrs.append(attr)
+
+        self.assertListEqual(test_result_attrs, expected_result_attrs)
+
+
 # Test the Person class constructor
 class TestPersonConstructor(unittest.TestCase):
     def setUp(self):
@@ -193,10 +351,32 @@ class TestPersonConstructor(unittest.TestCase):
 class TestSummaryConstructor(unittest.TestCase):
     def setUp(self):
         self.good_config = CONFIG
+
         self.bad_config_type = ["bad", "config"]  # Config must be a dict
-        self.bad_config_values = {
+        self.bad_config_keys = {
             "bad": "config"
         }  # Config must have People and Owner keys
+
+        self.bad_people_dict_keys = {
+            "People": [
+                {
+                    "Nme": "George",
+                    "Accounts": [1234, 4321],
+                    "Email": "boygeorge@gmail.com",
+                }
+            ],
+            "OwnerEmail": "bebas@gmail.com",
+        }
+        self.bad_people_dict_values =  {
+            "People": [
+                {
+                    "Name": "George",
+                    "Accounts": ["1234", "4321"],
+                    "Email": "boygeorge@gmail.com",
+                }
+            ],
+            "OwnerEmail": "bebas@gmail.com",
+        }
 
     def test_summary_constructor_from_config(self):
         summary = Summary(date.today(), config=self.good_config)
@@ -221,19 +401,85 @@ class TestSummaryConstructor(unittest.TestCase):
         with self.assertRaises(TypeError):
             summary = Summary(date.today(), config=self.bad_config_type)
 
-    def test_summary_constructor_bad_config_values(self):
+    def test_summary_constructor_bad_config_keys(self):
         with self.assertRaises(KeyError):
-            summary = Summary(date.today(), config=self.bad_config_values)
+            summary = Summary(date.today(), config=self.bad_config_keys)
+
+    def test_summary_constructor_bad_people_dict_keys(self):
+        with self.assertRaises(KeyError):
+            summary = Summary(date.today(), config=self.bad_people_dict_keys)
+
+    def test_summary_constructor_bad_people_dict_values(self):
+        with self.assertRaises(TypeError):
+            summary = Summary(date.today(), config=self.bad_people_dict_values)
+
+
+# Test the calculate_expenses function
+class TestCalculateExpenses(unittest.TestCase):
+    def setUp(self):
+        self.p1 = Person("George", "boygeorge@gmail.com", [1234, 4321])
+        self.p2 = Person(
+            "Tootie",
+            "tuttifruity@hotmail.com",
+            [1313, 2121],
+            [
+                Transaction(
+                    date(2023, 8, 31),
+                    "MADCATS DANCE",
+                    1313,
+                    17.0,
+                    Category.OTHER,  # just for the OTHER category
+                    IgnoredFrom.NOTHING,
+                ),
+                Transaction(
+                    date(2023, 9, 1),
+                    "MADCATS DANCE",
+                    1313,
+                    17.0,
+                    Category.OTHER,
+                    IgnoredFrom.NOTHING,
+                ),
+            ],
+        )
+
+    def test_calculate_expenses_no_trans(self):
+        self.assertEqual(self.p1.calculate_expenses(), 0)
+
+    def test_calculate_expenses_with_trans(self):
+        self.assertEqual(self.p2.calculate_expenses(Category.OTHER), 34)
+
+
+# Make unit tests for calculate_2_person_difference
+class TestCalculate2PersonDifference(unittest.TestCase):
+    def setUp(self):
+        # Must be called on a valid SpreadsheetSummary object
+        # Removing "budget" from "Ignored From" to make the calculation more interesting
+        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
+2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
+        self.config = CONFIG
+
+    def test_calculate_2_person_difference(self):
+        summary = SpreadsheetSummary(date.today(), self.csv_string, config=self.config)
+        self.assertEqual(
+            summary.calculate_2_person_difference(
+                summary.people[0], summary.people[1]
+            ),
+            -4.34,
+        )
 
 
 # Test the SpreadsheetSummary class constructor
 class TestSpreadsheetSummaryConstructor(unittest.TestCase):
-    def test_spreadsheet_summary_constructor(self):
-        csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+    def setUp(self):
+        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
 2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
+        self.config = CONFIG
+
+    def test_spreadsheet_summary_constructor(self):
         summary = SpreadsheetSummary(
-            date.today(), csv_string, config=CONFIG
+            date.today(), self.csv_string, config=self.config
         )  # bypass load_config
         # Make sure there are 2 people in the summary
         self.assertEqual(len(summary.people), 2)
@@ -246,151 +492,21 @@ class TestSpreadsheetSummaryConstructor(unittest.TestCase):
         self.assertEqual(len(summary.people[1].transactions), 1)
 
 
-# Test the from_row function
-class TestFromRow(unittest.TestCase):
-    # Test that a typical row is parsed correctly as a Transaction object
-    def test_from_row(self):
-        row = {
-            "Date": "2023-08-31",
-            "Original Date": "2023-08-31",
-            "Account Type": "Credit Card",
-            "Account Name": "SavorOne",
-            "Account Number": "1313",
-            "Institution Name": "Capital One",
-            "Name": "MADCATS DANCE",
-            "Custom Name": "",
-            "Amount": "17",
-            "Description": "MADCATS DANCE",
-            "Category": "R & T Shared",
-            "Note": "",
-            "Ignored From": "budget",
-            "Tax Deductible": "",
-        }
-        test_result = Transaction.from_row(row)
-        test_result_attrs = []
-        for attr in dir(test_result):
-            if not attr.startswith("__"):
-                test_result_attrs.append(attr)
-
-        expected_result = Transaction(
-            date(2023, 8, 31),
-            "MADCATS DANCE",
-            1313,
-            17.0,
-            Category.OTHER,
-            IgnoredFrom.BUDGET,
-        )
-        expected_result_attrs = []
-        for attr in dir(expected_result):
-            if not attr.startswith("__"):
-                expected_result_attrs.append(attr)
-
-        self.assertListEqual(test_result_attrs, expected_result_attrs)
-
-    # Test that a row with an invalid category is ignored
-    def test_from_row_bad_category(self):
-        row = {
-            "Date": "2023-09-17",
-            "Original Date": "2023-09-17",
-            "Account Type": "Cash",
-            "Account Name": "Savings Account",
-            "Account Number": "2121",
-            "Institution Name": "Ally Bank",
-            "Name": "SURPISE SAVINGS",
-            "Custom Name": "",
-            "Amount": "-10",
-            "Description": "SURPISE SAVINGS",
-            "Category": "Internal Transfers",
-            "Note": "",
-            "Ignored From": "",
-            "Tax Deductible": "",
-        }
-        test_result = Transaction.from_row(row)
-        self.assertIsNone(test_result)
-
-    # Test that a row with an Ignored From value is ignored
-    def test_from_row_ignored(self):
-        row = {
-            "Date": "2023-09-04",
-            "Original Date": "2023-09-04",
-            "Account Type": "Credit Card",
-            "Account Name": "CREDIT CARD",
-            "Account Number": "1234",
-            "Institution Name": "Chase",
-            "Name": "TIKICAT BAR",
-            "Custom Name": "",
-            "Amount": "12.66",
-            "Description": "TIKICAT BAR",
-            "Category": "Dining & Drinks",
-            "Note": "",
-            "Ignored From": "cats",
-            "Tax Deductible": "",
-        }
-        test_result = Transaction.from_row(row)
-        self.assertIsNone(test_result)
-
-        row = {
-            "Date": "2023-09-04",
-            "Original Date": "2023-09-04",
-            "Account Type": "Credit Card",
-            "Account Name": "CREDIT CARD",
-            "Account Number": "1234",
-            "Institution Name": "Chase",
-            "Custom Name": "",
-            "Amount": "12.66",
-            "Description": "TIKICAT BAR",
-            "Category": "Dining & Drinks",
-            "Note": "",
-            "Ignored From": "",
-            "Tax Deductible": "",
-        }
-        test_result = Transaction.from_row(row)
-        self.assertIsNone(test_result)
-
-
-# Test the initialize_people function
-class TestInitializePeople(unittest.TestCase):
-    def test_initialize_config_keys(self):
-        bad_config_keys = {
-            "People": [
-                {
-                    "Nme": "George",
-                    "Accounts": [1234, 4321],
-                    "Email": "boygeorge@gmail.com",
-                }
-            ],
-            "OwnerEmail": "bebas@gmail.com",
-        }
-        with self.assertRaises(KeyError):
-            summary = Summary(date.today(), bad_config_keys)
-
-    def test_initialize_bad_config_values(self):
-        bad_config_values = {
-            "People": [
-                {
-                    "Name": "George",
-                    "Accounts": ["1234", "4321"],
-                    "Email": "boygeorge@gmail.com",
-                }
-            ],
-            "OwnerEmail": "bebas@gmail.com",
-        }
-        with self.assertRaises(TypeError):
-            summary = Summary(date.today(), bad_config_values)
-
-
 # Test the SpreadsheetParser.parse function
 class TestParse(unittest.TestCase):
+    def setUp(self):
+        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
+        self.garbage = "***THIS IS A GARBAGE SPREADSHEET***"
+
     # Test that a garbage spreadsheet is parsed as an empty list
     def test_parse_bad_spreadsheet(self):
-        test_result = SpreadsheetParser.parse(GARBAGE)
+        test_result = SpreadsheetParser.parse(self.garbage)
         self.assertEqual(test_result, [])
 
     # Test that a typical row is parsed correctly as a Transaction object
     # We already tested the from_row function, so we just need to check from_row was called with the proper arguments
     def test_parse_good_row(self):
-        csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
         mock_row = {
             "Date": "2023-08-31",
             "Original Date": "2023-08-31",
@@ -417,116 +533,11 @@ class TestParse(unittest.TestCase):
         )
         mock_from_row = MagicMock(return_value=mock_transaction)
         with patch("lambda_function.src.main.Transaction.from_row", mock_from_row):
-            test_result = SpreadsheetParser.parse(csv_string)
+            test_result = SpreadsheetParser.parse(self.csv_string)
             mock_from_row.assert_called_once_with(mock_row)
             # Confirm test_result is a list of length 1 and contains a Transaction object
             self.assertEqual(len(test_result), 1)
             self.assertIsInstance(test_result[0], Transaction)
-
-
-# Test the calculate_expenses function
-class TestCalculateExpenses(unittest.TestCase):
-    def test_calculate_expenses_no_trans(self):
-        person = Person("George", "boygeorge@gmail.com", [1234, 4321])
-        self.assertEqual(person.calculate_expenses(), 0)
-
-    def test_calculate_expenses_with_trans(self):
-        person = Person(
-            "Tootie",
-            "tuttifruity@hotmail.com",
-            [1313, 2121],
-            [
-                Transaction(
-                    date(2023, 8, 31),
-                    "MADCATS DANCE",
-                    1313,
-                    17.0,
-                    Category.OTHER,  # just for the OTHER category
-                    IgnoredFrom.NOTHING,
-                ),
-                Transaction(
-                    date(2023, 9, 1),
-                    "MADCATS DANCE",
-                    1313,
-                    17.0,
-                    Category.OTHER,
-                    IgnoredFrom.NOTHING,
-                ),
-            ],
-        )
-        self.assertEqual(person.calculate_expenses(Category.OTHER), 34)
-
-
-# Make unit tests for calculate_2_person_difference
-class TestCalculate2PersonDifference(unittest.TestCase):
-    def setUp(self):
-        # Must be called on a valid SpreadsheetSummary object
-        # Removing "budget" from "Ignored From" to make the calculation more interesting
-        csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
-2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
-        self.summary = SpreadsheetSummary(date.today(), csv_string, config=CONFIG)
-
-    def test_calculate_2_person_difference(self):
-        self.assertEqual(
-            self.summary.calculate_2_person_difference(
-                self.summary.people[0], self.summary.people[1]
-            ),
-            -4.34,
-        )
-
-
-# Test the read_s3_file function
-class TestReadS3File(unittest.TestCase):
-    def setUp(self):
-        self.bucket = "test-bucket"
-        self.key = "test-key"
-        self.data = "Hello, World!"
-
-    @mock_s3
-    def test_read_s3_file_success(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        s3.put_object(Bucket=self.bucket, Key=self.key, Body=self.data)
-        result = read_s3_file(self.bucket, self.key)
-        self.assertEqual(result, self.data)
-
-    @mock_s3
-    def test_read_s3_file_key_failure(self):
-        s3 = boto3.client("s3")
-        s3.create_bucket(Bucket=self.bucket)
-        with self.assertRaises(exceptions.ClientError):
-            read_s3_file(self.bucket, "nonexistent-key")
-
-    @mock_s3
-    def test_read_s3_file_bucket_failure(self):
-        s3 = boto3.client("s3")
-        with self.assertRaises(exceptions.ClientError):
-            read_s3_file("nonexistent-bucket", self.key)
-
-
-# Test the send_email function
-class TestSendEmail(unittest.TestCase):
-    @mock_ses
-    def test_send_email(self):
-        ses = boto3.client("ses", region_name="us-east-1")
-        ses.verify_email_identity(EmailAddress="bebas@gmail.com")
-        source = "bebas@gmail.com"
-        to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
-        subject = "Test"
-        html_body = "<p>Test</p>"
-        response = send_email(source, to_addresses, subject, html_body)
-        self.assertIn("MessageId", response)
-
-    @mock_ses
-    def test_send_email_bad_source(self):
-        ses = boto3.client("ses", region_name="us-east-1")
-        bad_source = "bebas@gmail.com"
-        to_addresses = ["boygeorge@gmail.com", "tuttifruity@hotmail.com"]
-        subject = "Test"
-        html_body = "<p>Test</p>"
-        with self.assertRaises(exceptions.ClientError):
-            send_email(bad_source, to_addresses, subject, html_body)
 
 
 # Test EmailGenerator
@@ -538,17 +549,18 @@ class TestSendEmail(unittest.TestCase):
 class TestEmailGenerator(unittest.TestCase):
     def setUp(self):
         # Must be called on a valid Summary object
-        csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
-        self.summary = SpreadsheetSummary(date.today(), csv_string, config=CONFIG)
+        self.config = CONFIG
 
     def test_generate_summary_email(self):
-        result = EmailGenerator.generate_summary_email(self.summary)
-        self.assertEqual(result[0], self.summary.owner)
-        self.assertEqual(result[1], [p.email for p in self.summary.people])
+        summary = SpreadsheetSummary(date.today(), self.csv_string, config=self.config)
+        result = EmailGenerator.generate_summary_email(summary)
+        self.assertEqual(result[0], summary.owner)
+        self.assertEqual(result[1], [p.email for p in summary.people])
         self.assertEqual(
             result[2],
-            f"Monthly Summary - {self.summary.date.strftime(DISPLAY_DATE_FORMAT)}",
+            f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
         )
         # We've tested the other functions, so just test that the html starts and ends with the correct strings
         self.assertTrue(result[3].startswith("<html>"))
@@ -629,69 +641,6 @@ class TestLambdaHandler(unittest.TestCase):
         with patch("lambda_function.src.main.analyze_file", mock_analyze_file):
             lambda_handler(event, None)
             mock_analyze_file.assert_called_once_with("s3://test-bucket/test-key")
-
-
-# Test the parse_date_from_filename function
-class TestParseDateFromFilename(unittest.TestCase):
-    def test_parse_date_from_filename(self):
-        # Test with a valid filename
-        filename = "2022-01-31.csv"
-        expected_date = date(2022, 1, 31)
-        self.assertEqual(parse_date_from_filename(filename), expected_date)
-
-        # Test with a different valid filename
-        filename = "2023-09-23T15_17_14.839Z-transactions.csv"
-        expected_date = date(2023, 9, 23)
-        self.assertEqual(parse_date_from_filename(filename), expected_date)
-
-        # Test with an invalid filename
-        filename = "expenses_2021-12.csv"
-        with self.assertRaises(AttributeError):
-            parse_date_from_filename(filename)
-
-
-# Test build_category_enum
-class TestBuildCategoryEnum(unittest.TestCase):
-    def test_build_category_enum_valid_config(self):
-        config = CONFIG
-        category_enum = build_category_enum(config)
-        expected_enum = {
-            "DINING": "Dining & Drinks",
-            "GROCERIES": "Groceries",
-            "PETS": "Pets",
-            "BILLS": "Bills & Utilities",
-            "OTHER": "R & T Shared",
-        }
-        # Get the keys and values of the enums
-        category_enum_keys = []
-        category_enum_values = []
-        for key in category_enum:
-            category_enum_keys.append(key.name)
-            category_enum_values.append(key.value)
-        expected_enum_keys = []
-        expected_enum_values = []
-        for k, v in expected_enum.items():
-            expected_enum_keys.append(k)
-            expected_enum_values.append(v)
-        # Assert the keys and values match
-        self.assertListEqual(category_enum_keys, expected_enum_keys)
-        self.assertListEqual(category_enum_values, expected_enum_values)
-
-    def test_build_category_enum_invalid_config_key(self):
-        # Test with an invalid config
-        bad_config = {"Cats": None}
-        with self.assertRaises(KeyError):
-            build_category_enum(bad_config)
-
-    def test_build_category_enum_invalid_config_value(self):
-        bad_config = {"Categories": ["bad", "config"]}
-        with self.assertRaises(TypeError):
-            build_category_enum(bad_config)
-
-    def test_build_category_enum_invalid_category_value(self):
-        bad_config = {"Categories": {"DINING": ["bad", "config"]}}
-        with self.assertRaises(TypeError):
-            build_category_enum(bad_config)
 
 
 def main():

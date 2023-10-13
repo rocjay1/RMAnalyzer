@@ -460,6 +460,70 @@ class Summary:
         return person1.calculate_expenses(category) - person2.calculate_expenses(
             category
         )
+    
+    def generate_email_data(self):
+        """
+        Generates an HTML email containing a summary of expenses for each person in the given
+        summary object.
+
+        Args:
+            summary (Summary): The summary object containing the data to be included in the email.
+
+        Returns:
+            Tuple[str, List[str], str, str]: A tuple containing the email sender, recipients,
+            subject, and HTML body.
+        """
+        html = """<html>
+        <head>
+            <style>
+                table {
+                    border-collapse: collapse;
+                    width: 100%;
+                }
+                
+                th, td {
+                    border: 1px solid black;
+                    padding: 8px 12px;  /* Add padding to table cells */
+                    text-align: left;
+                }
+
+                th {
+                    background-color: #f2f2f2;  /* A light background color for headers */
+                }
+            </style>
+        </head>
+        <body>"""
+
+        html += "<table border='1'>\n<thead>\n<tr>\n<th></th>\n"
+        for category in Category:
+            html += f"<th>{category.value}</th>\n"
+        html += "<th>Total</th>\n</tr>\n</thead>\n<tbody>\n"
+
+        for person in self.people:
+            html += "<tr>\n"
+            html += f"<td>{person.name}</td>\n"
+            for category in Category:
+                html += f"<td>{format_money_helper(person.calculate_expenses(category))}</td>\n"
+            html += f"<td>{format_money_helper(person.calculate_expenses())}</td>\n"
+            html += "</tr>\n"
+
+        # Assuming there will always be exactly 2 people for the difference calculation
+        if len(self.people) == 2:
+            person1, person2 = self.people
+            html += "<tr>\n"
+            html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
+            for category in Category:
+                html += f"<td>{format_money_helper(self.calculate_2_person_difference(person1, person2, category))}</td>\n"
+            html += f"<td>{format_money_helper(self.calculate_2_person_difference(person1, person2))}</td>\n"
+            html += "</tr>\n"
+
+        html += "</tbody>\n</table>\n</body>\n</html>"
+        return (
+            self.owner,
+            [p.email for p in self.people],
+            f"Monthly Summary - {self.date.strftime(DISPLAY_DATE_FORMAT)}",
+            html,
+        )
 
 
 class SpreadsheetSummary(Summary):
@@ -504,79 +568,7 @@ class SpreadsheetParser:
             if transaction:
                 results.append(transaction)
         return results
-
-
-class EmailGenerator:
-    """
-    A class for generating HTML emails containing a summary of expenses for each person in a given
-    summary object.
-    """
-
-    @staticmethod
-    def generate_summary_email(summary):
-        """
-        Generates an HTML email containing a summary of expenses for each person in the given
-        summary object.
-
-        Args:
-            summary (Summary): The summary object containing the data to be included in the email.
-
-        Returns:
-            Tuple[str, List[str], str, str]: A tuple containing the email sender, recipients,
-            subject, and HTML body.
-        """
-        html = """<html>
-        <head>
-            <style>
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                }
-                
-                th, td {
-                    border: 1px solid black;
-                    padding: 8px 12px;  /* Add padding to table cells */
-                    text-align: left;
-                }
-
-                th {
-                    background-color: #f2f2f2;  /* A light background color for headers */
-                }
-            </style>
-        </head>
-        <body>"""
-
-        html += "<table border='1'>\n<thead>\n<tr>\n<th></th>\n"
-        for category in Category:
-            html += f"<th>{category.value}</th>\n"
-        html += "<th>Total</th>\n</tr>\n</thead>\n<tbody>\n"
-
-        for person in summary.people:
-            html += "<tr>\n"
-            html += f"<td>{person.name}</td>\n"
-            for category in Category:
-                html += f"<td>{format_money_helper(person.calculate_expenses(category))}</td>\n"
-            html += f"<td>{format_money_helper(person.calculate_expenses())}</td>\n"
-            html += "</tr>\n"
-
-        # Assuming there will always be exactly 2 people for the difference calculation
-        if len(summary.people) == 2:
-            person1, person2 = summary.people
-            html += "<tr>\n"
-            html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
-            for category in Category:
-                html += f"<td>{format_money_helper(summary.calculate_2_person_difference(person1, person2, category))}</td>\n"
-            html += f"<td>{format_money_helper(summary.calculate_2_person_difference(person1, person2))}</td>\n"
-            html += "</tr>\n"
-
-        html += "</tbody>\n</table>\n</body>\n</html>"
-        return (
-            summary.owner,
-            [p.email for p in summary.people],
-            f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
-            html,
-        )
-
+    
 
 # MAIN
 def analyze_file(file_path):
@@ -594,9 +586,7 @@ def analyze_file(file_path):
     file_content = read_s3_file(bucket, key)
     summary_date = parse_date_from_filename(key)
     summary = SpreadsheetSummary(summary_date, file_content)
-    source, to_addresses, subject, html_body = EmailGenerator.generate_summary_email(
-        summary
-    )
+    source, to_addresses, subject, html_body = summary.generate_email_data()
     send_email(source, to_addresses, subject, html_body)
 
 

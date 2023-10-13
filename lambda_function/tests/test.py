@@ -16,11 +16,7 @@ from lambda_function.src.main import *
 
 CONFIG = {
     "People": [
-        {
-            "Name": "George", 
-            "Accounts": [1234, 4321], 
-            "Email": "boygeorge@gmail.com"
-        },
+        {"Name": "George", "Accounts": [1234, 4321], "Email": "boygeorge@gmail.com"},
         {
             "Name": "Tootie",
             "Accounts": [1313, 2121],
@@ -103,7 +99,9 @@ class TestSendEmail(unittest.TestCase):
     def test_send_email(self):
         ses = boto3.client("ses", region_name="us-east-1")
         ses.verify_email_identity(EmailAddress="bebas@gmail.com")
-        response = send_email(self.source, self.to_addresses, self.subject, self.html_body)
+        response = send_email(
+            self.source, self.to_addresses, self.subject, self.html_body
+        )
         self.assertIn("MessageId", response)
 
     @mock_ses
@@ -367,7 +365,7 @@ class TestSummaryConstructor(unittest.TestCase):
             ],
             "OwnerEmail": "bebas@gmail.com",
         }
-        self.bad_people_dict_values =  {
+        self.bad_people_dict_values = {
             "People": [
                 {
                     "Name": "George",
@@ -463,9 +461,7 @@ class TestCalculate2PersonDifference(unittest.TestCase):
     def test_calculate_2_person_difference(self):
         summary = SpreadsheetSummary(self.date, self.csv_string, config=self.config)
         self.assertEqual(
-            summary.calculate_2_person_difference(
-                summary.people[0], summary.people[1]
-            ),
+            summary.calculate_2_person_difference(summary.people[0], summary.people[1]),
             -4.34,
         )
 
@@ -557,7 +553,7 @@ class TestEmailGenerator(unittest.TestCase):
 
     def test_generate_summary_email(self):
         summary = SpreadsheetSummary(date.today(), self.csv_string, config=self.config)
-        result = EmailGenerator.generate_summary_email(summary)
+        result = summary.generate_email_data()
         self.assertEqual(result[0], summary.owner)
         self.assertEqual(result[1], [p.email for p in summary.people])
         self.assertEqual(
@@ -578,49 +574,40 @@ class TestEmailGenerator(unittest.TestCase):
 # bucket = "test-bucket" and key = "test-key"
 # Since send_email called within analyze_file uses ses.send_email, mock_ses must be used
 class TestAnalyzeFile(unittest.TestCase):
+    def setUp(self):
+        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
+        self.config = CONFIG
+        self.date = datetime(2023, 8, 1)
+
     def test_analyze_file(self):
-        # Mock the function and classes being used in the function
-        mock_read_s3_file = MagicMock()
-        mock_spreadsheet_summary = MagicMock()
-        mock_email_generator = MagicMock()
+        mock_read_s3_file = MagicMock(return_value=self.csv_string)
         mock_send_email = MagicMock()
 
-        file_path = "s3://some_bucket/2023-09-23T.csv"
-        mock_file_content = "mocked_file_content"
-        mock_read_s3_file.return_value = mock_file_content
-
-        mock_summary = "mocked_summary"
-        mock_spreadsheet_summary.return_value = mock_summary
-
+        mock_file_path = "s3://some_bucket/2023-09-23T.csv"
         mock_source = "mocked_source"
         mock_to_addresses = "mocked_to_addresses"
         mock_subject = "mocked_subject"
         mock_html_body = "mocked_html_body"
-        mock_email_generator.generate_summary_email.return_value = (
-            mock_source,
-            mock_to_addresses,
-            mock_subject,
-            mock_html_body,
-        )
 
-        # Use patch to replace the real function/class with our mocks
+        # Here we patch only the 'generate_email_data' method, not the entire class.
         with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file), patch(
-            "lambda_function.src.main.SpreadsheetSummary", mock_spreadsheet_summary
-        ), patch(
-            "lambda_function.src.main.EmailGenerator", mock_email_generator
-        ), patch(
-            "lambda_function.src.main.send_email", mock_send_email
+            "lambda_function.src.main.SpreadsheetSummary.generate_email_data",
+            MagicMock(
+                return_value=(
+                    mock_source,
+                    mock_to_addresses,
+                    mock_subject,
+                    mock_html_body,
+                )
+            ),
+        ), patch("lambda_function.src.main.send_email", mock_send_email), patch(
+            "lambda_function.src.main.load_config", MagicMock(return_value=self.config)
         ):
-            analyze_file(file_path)
+            analyze_file(mock_file_path)
 
-            # Assert the function and classes were called with the expected arguments
+            # Assert the functions were called with the expected arguments
             mock_read_s3_file.assert_called_once_with("some_bucket", "2023-09-23T.csv")
-            mock_spreadsheet_summary.assert_called_once_with(
-                date(2023, 9, 23), mock_file_content
-            )
-            mock_email_generator.generate_summary_email.assert_called_once_with(
-                mock_summary
-            )
             mock_send_email.assert_called_once_with(
                 mock_source, mock_to_addresses, mock_subject, mock_html_body
             )

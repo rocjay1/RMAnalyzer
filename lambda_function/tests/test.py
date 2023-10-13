@@ -455,12 +455,13 @@ class TestCalculate2PersonDifference(unittest.TestCase):
         # Must be called on a valid SpreadsheetSummary object
         # Removing "budget" from "Ignored From" to make the calculation more interesting
         self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
-2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
+2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
+2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
         self.config = CONFIG
+        self.date = datetime(2023, 9, 1)
 
     def test_calculate_2_person_difference(self):
-        summary = SpreadsheetSummary(date.today(), self.csv_string, config=self.config)
+        summary = SpreadsheetSummary(self.date, self.csv_string, config=self.config)
         self.assertEqual(
             summary.calculate_2_person_difference(
                 summary.people[0], summary.people[1]
@@ -473,13 +474,14 @@ class TestCalculate2PersonDifference(unittest.TestCase):
 class TestSpreadsheetSummaryConstructor(unittest.TestCase):
     def setUp(self):
         self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
-2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
+2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
+2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
         self.config = CONFIG
+        self.date = datetime(2023, 9, 1)
 
     def test_spreadsheet_summary_constructor(self):
         summary = SpreadsheetSummary(
-            date.today(), self.csv_string, config=self.config
+            self.date, self.csv_string, config=self.config
         )  # bypass load_config
         # Make sure there are 2 people in the summary
         self.assertEqual(len(summary.people), 2)

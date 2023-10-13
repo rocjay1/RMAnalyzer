@@ -59,7 +59,8 @@ def load_config(config_path=None):
     """
     Load configuration from a JSON file.
 
-    :param config: Path to the JSON configuration file. If None, the default CONFIG_PATH will be used.
+    :param config: Path to the JSON configuration file. If None, 
+        the default CONFIG_PATH will be used.
     :type config: str or None
     :return: A dictionary containing the configuration data.
     :rtype: dict
@@ -158,14 +159,16 @@ def build_category_enum(config=None):
     Builds an Enum object representing the categories defined in the configuration.
 
     Args:
-        config (dict): A dictionary containing the configuration. If None, the default configuration will be loaded.
+        config (dict): A dictionary containing the configuration. If None, the default 
+        configuration will be loaded.
 
     Returns:
         Enum: An Enum object representing the categories defined in the configuration.
 
     Raises:
         KeyError: If the 'Categories' key is missing from the configuration.
-        TypeError: If the 'Categories' value is not a dictionary or if any of the values in the 'Categories' dictionary are not strings.
+        TypeError: If the 'Categories' value is not a dictionary or if any of the values in 
+        the 'Categories' dictionary are not strings.
     """
     if config is None:
         config = load_config()
@@ -428,8 +431,7 @@ class Summary:
             if (
                 transaction.account_number in person.account_numbers
                 and transaction.ignore == IgnoredFrom.NOTHING
-                # Commenting out the following line will include transactions from previous months
-                # and transaction.date.month == self.date.month
+                and transaction.date.month == self.date.month
             ):
                 person.add_transaction(transaction)
 

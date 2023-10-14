@@ -1,13 +1,16 @@
 # pylint: disable-all
 # Desc: Unit tests for RMAnalyzer
 # Author: Rocco Davino
+# Notes: To run coverage, run the following command from the root directory:
+#        coverage run -m lambda_function.tests.test
+#        coverage report -m lambda_function\src\main.py
 
 
 import json
 from datetime import date
 import unittest
 from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 import boto3
 from botocore import exceptions
 from moto import mock_s3, mock_ses
@@ -41,10 +44,17 @@ class TestLoadConfig(unittest.TestCase):
         self.config = CONFIG
 
     def test_load_config_bad_json(self):
-        mock_fp = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
-        with patch("json.load", mock_fp):
-            with self.assertRaises(json.decoder.JSONDecodeError):
-                load_config(mock_fp)
+        # Mocking the json.load function to raise JSONDecodeError
+        mock_json_load = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
+
+        # Use mock_open provided by unittest.mock library
+        m_open = mock_open()
+
+        with patch("json.load", mock_json_load):
+            with patch("builtins.open", m_open):
+                with self.assertRaises(json.decoder.JSONDecodeError):
+                    load_config("any_path_will_do.json")
+
 
     def test_load_config_bad_file(self):
         with self.assertRaises(FileNotFoundError):
@@ -452,14 +462,14 @@ class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
         # Must be called on a valid SpreadsheetSummary object
         # Removing "budget" from "Ignored From" to make the calculation more interesting
-        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+        self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
         self.config = CONFIG
         self.date = datetime(2023, 9, 1)
 
     def test_calculate_2_person_difference(self):
-        summary = SpreadsheetSummary(self.date, self.csv_string, config=self.config)
+        summary = SpreadsheetSummary(self.date, self.file_content, config=self.config)
         self.assertEqual(
             summary.calculate_2_person_difference(summary.people[0], summary.people[1]),
             -4.34,
@@ -469,7 +479,7 @@ class TestCalculate2PersonDifference(unittest.TestCase):
 # Test the SpreadsheetSummary class constructor
 class TestSpreadsheetSummaryConstructor(unittest.TestCase):
     def setUp(self):
-        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+        self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
         self.config = CONFIG
@@ -477,7 +487,7 @@ class TestSpreadsheetSummaryConstructor(unittest.TestCase):
 
     def test_spreadsheet_summary_constructor(self):
         summary = SpreadsheetSummary(
-            self.date, self.csv_string, config=self.config
+            self.date, self.file_content, config=self.config
         )  # bypass load_config
         # Make sure there are 2 people in the summary
         self.assertEqual(len(summary.people), 2)
@@ -493,7 +503,7 @@ class TestSpreadsheetSummaryConstructor(unittest.TestCase):
 # Test the SpreadsheetParser.parse function
 class TestParse(unittest.TestCase):
     def setUp(self):
-        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+        self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
         self.garbage = "***THIS IS A GARBAGE SPREADSHEET***"
 
@@ -531,28 +541,28 @@ class TestParse(unittest.TestCase):
         )
         mock_from_row = MagicMock(return_value=mock_transaction)
         with patch("lambda_function.src.main.Transaction.from_row", mock_from_row):
-            test_result = SpreadsheetParser.parse(self.csv_string)
+            test_result = SpreadsheetParser.parse(self.file_content)
             mock_from_row.assert_called_once_with(mock_row)
             # Confirm test_result is a list of length 1 and contains a Transaction object
             self.assertEqual(len(test_result), 1)
             self.assertIsInstance(test_result[0], Transaction)
 
 
-# Test EmailGenerator
-# Test generate_summary_email on a valid summary
+# Test Summary.generate_email_data
+# Test generate_email_data on a valid summary
 # The result should be a tuple matching
 #   summary.owner,[p.email for p in summary.people],f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
 #   html
 # where html starts with "<html>" and ends with "</html>"
-class TestEmailGenerator(unittest.TestCase):
+class TestGenerateEmailData(unittest.TestCase):
     def setUp(self):
         # Must be called on a valid Summary object
-        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+        self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
         self.config = CONFIG
 
-    def test_generate_summary_email(self):
-        summary = SpreadsheetSummary(date.today(), self.csv_string, config=self.config)
+    def test_generate_email_data(self):
+        summary = SpreadsheetSummary(date.today(), self.file_content, config=self.config)
         result = summary.generate_email_data()
         self.assertEqual(result[0], summary.owner)
         self.assertEqual(result[1], [p.email for p in summary.people])
@@ -575,13 +585,13 @@ class TestEmailGenerator(unittest.TestCase):
 # Since send_email called within analyze_file uses ses.send_email, mock_ses must be used
 class TestAnalyzeFile(unittest.TestCase):
     def setUp(self):
-        self.csv_string = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+        self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
         self.config = CONFIG
         self.date = datetime(2023, 8, 1)
 
     def test_analyze_file(self):
-        mock_read_s3_file = MagicMock(return_value=self.csv_string)
+        mock_read_s3_file = MagicMock(return_value=self.file_content)
         mock_send_email = MagicMock()
 
         mock_file_path = "s3://some_bucket/2023-09-23T.csv"

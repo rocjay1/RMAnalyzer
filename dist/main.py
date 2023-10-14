@@ -328,9 +328,10 @@ class Summary:
             # HTML head
             with tag("head"):
                 doc.asis(
-                    "<style>table {border-collapse: collapse; width: 100%;} \
-                        th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
-                        th {background-color: #f2f2f2;}</style>"
+                    "<style>body {display: flex; justify-content: center;} \
+                    table {border-collapse: collapse; width: 75%} \
+                    th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
+                    th {background-color: #f2f2f2;}</style>"
                 )
             # HTML body
             with tag("body"):

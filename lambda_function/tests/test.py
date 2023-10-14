@@ -32,7 +32,8 @@ CONFIG = {
         "GROCERIES": "Groceries",
         "PETS": "Pets",
         "BILLS": "Bills & Utilities",
-        "OTHER": "R & T Shared",
+        "PURCHASES": "Shared Purchases",
+        "SUBSCRIPTIONS": "Shared Subscriptions"
     },
 }
 
@@ -150,7 +151,8 @@ class TestBuildCategoryEnum(unittest.TestCase):
             "GROCERIES": "Groceries",
             "PETS": "Pets",
             "BILLS": "Bills & Utilities",
-            "OTHER": "R & T Shared",
+            "PURCHASES": "Shared Purchases",
+            "SUBSCRIPTIONS": "Shared Subscriptions"
         }
         # Get the keys and values of the enums
         category_enum_keys, category_enum_values = [], []
@@ -280,7 +282,7 @@ class TestFromRow(unittest.TestCase):
             "Custom Name": "",
             "Amount": "17",
             "Description": "MADCATS DANCE",
-            "Category": "R & T Shared",
+            "Category": "Shared Purchases",
             "Note": "",
             "Ignored From": "everything",
             "Tax Deductible": "",
@@ -292,7 +294,7 @@ class TestFromRow(unittest.TestCase):
             "MADCATS DANCE",
             1313,
             17.0,
-            Category.OTHER,
+            Category.PURCHASES,
             IgnoredFrom.EVERYTHING,
         )
 
@@ -436,7 +438,7 @@ class TestCalculateExpenses(unittest.TestCase):
                     "MADCATS DANCE",
                     1313,
                     17.0,
-                    Category.OTHER,  # just for the OTHER category
+                    Category.PURCHASES,  # just for the OTHER category
                     IgnoredFrom.NOTHING,
                 ),
                 Transaction(
@@ -444,7 +446,7 @@ class TestCalculateExpenses(unittest.TestCase):
                     "MADCATS DANCE",
                     1313,
                     17.0,
-                    Category.OTHER,
+                    Category.PURCHASES,
                     IgnoredFrom.NOTHING,
                 ),
             ],
@@ -454,14 +456,14 @@ class TestCalculateExpenses(unittest.TestCase):
         self.assertEqual(self.p1.calculate_expenses(), 0)
 
     def test_calculate_expenses_with_trans(self):
-        self.assertEqual(self.p2.calculate_expenses(Category.OTHER), 34)
+        self.assertEqual(self.p2.calculate_expenses(Category.PURCHASES), 34)
 
 
 # Make unit tests for calculate_2_person_difference
 class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
+2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,Shared Purchases,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
         self.config = CONFIG
         self.date = datetime(2023, 9, 1)
@@ -478,7 +480,7 @@ class TestCalculate2PersonDifference(unittest.TestCase):
 class TestSpreadsheetSummaryConstructor(unittest.TestCase):
     def setUp(self):
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
+2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,Shared Purchases,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
         self.config = CONFIG
         self.date = datetime(2023, 9, 1)
@@ -534,7 +536,7 @@ class TestParse(unittest.TestCase):
             "MADCATS DANCE",
             1313,
             17.0,
-            Category.OTHER,
+            Category.PURCHASES,
             IgnoredFrom.NOTHING,
         )
         mock_from_row = MagicMock(return_value=mock_transaction)

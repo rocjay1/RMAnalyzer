@@ -369,9 +369,7 @@ class Summary:
                             person1, person2 = self.people
                             with tag("tr"):
                                 with tag("td"):
-                                    text(
-                                        f"Difference ({person1.name} - {person2.name})"
-                                    )
+                                    text("Difference")
                                 for category in Category:
                                     with tag("td"):
                                         text(

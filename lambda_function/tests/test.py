@@ -460,8 +460,6 @@ class TestCalculateExpenses(unittest.TestCase):
 # Make unit tests for calculate_2_person_difference
 class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
-        # Must be called on a valid SpreadsheetSummary object
-        # Removing "budget" from "Ignored From" to make the calculation more interesting
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
@@ -553,10 +551,9 @@ class TestParse(unittest.TestCase):
 # The result should be a tuple matching
 #   summary.owner,[p.email for p in summary.people],f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
 #   html
-# where html starts with "<html>" and ends with "</html>"
+# where html starts with "<!DOCTYPE html>" and ends with "</html>"
 class TestGenerateEmailData(unittest.TestCase):
     def setUp(self):
-        # Must be called on a valid Summary object
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
         self.config = CONFIG
@@ -571,36 +568,31 @@ class TestGenerateEmailData(unittest.TestCase):
             f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
         )
         # We've tested the other functions, so just test that the html starts and ends with the correct strings
-        self.assertTrue(result[3].startswith("<html>"))
+        self.assertTrue(result[3].startswith("<!DOCTYPE html>"))
         self.assertTrue(result[3].endswith("</html>"))
 
 
-# Test analyze_file
+# Test analyze_s3_sheet
 # Already tested most of the functionality in other tests
 # Just need to confirm the various functions are called
-# Also test
-#   bucket, key = file_path.replace("s3://", "").split("/", 1)
-# On a path like "s3://test-bucket/test-key" sets
-# bucket = "test-bucket" and key = "test-key"
 # Since send_email called within analyze_file uses ses.send_email, mock_ses must be used
-class TestAnalyzeFile(unittest.TestCase):
+class TestAnalyzeS3Sheet(unittest.TestCase):
     def setUp(self):
-        self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
+        self.file_content = "Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible"
         self.config = CONFIG
         self.date = datetime(2023, 8, 1)
 
-    def test_analyze_file(self):
+    def test_analyze_s3_sheet(self):
         mock_read_s3_file = MagicMock(return_value=self.file_content)
         mock_send_email = MagicMock()
 
-        mock_file_path = "s3://some_bucket/2023-09-23T.csv"
+        mock_bucket, mock_key = "some_bucket", "2023-09-23T.csv"
         mock_source = "mocked_source"
         mock_to_addresses = "mocked_to_addresses"
         mock_subject = "mocked_subject"
         mock_html_body = "mocked_html_body"
 
-        # Here we patch only the 'generate_email_data' method, not the entire class.
+        # Here we patch only the 'generate_email_data' method, not the entire class
         with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file), patch(
             "lambda_function.src.main.SpreadsheetSummary.generate_email_data",
             MagicMock(
@@ -614,7 +606,7 @@ class TestAnalyzeFile(unittest.TestCase):
         ), patch("lambda_function.src.main.send_email", mock_send_email), patch(
             "lambda_function.src.main.load_config", MagicMock(return_value=self.config)
         ):
-            analyze_file(mock_file_path)
+            analyze_s3_sheet(mock_bucket, mock_key)
 
             # Assert the functions were called with the expected arguments
             mock_read_s3_file.assert_called_once_with("some_bucket", "2023-09-23T.csv")
@@ -626,7 +618,7 @@ class TestAnalyzeFile(unittest.TestCase):
 # Test lambda_handler
 class TestLambdaHandler(unittest.TestCase):
     def test_lambda_handler(self):
-        mock_analyze_file = MagicMock()
+        mock_analyze_s3_sheet = MagicMock()
         event = {
             "Records": [
                 {
@@ -637,9 +629,9 @@ class TestLambdaHandler(unittest.TestCase):
                 }
             ]
         }
-        with patch("lambda_function.src.main.analyze_file", mock_analyze_file):
+        with patch("lambda_function.src.main.analyze_s3_sheet", mock_analyze_s3_sheet):
             lambda_handler(event, None)
-            mock_analyze_file.assert_called_once_with("s3://test-bucket/test-key")
+            mock_analyze_s3_sheet.assert_called_once_with("test-bucket", "test-key")
 
 
 def main():

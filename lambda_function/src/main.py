@@ -28,6 +28,7 @@ import json
 import re
 import boto3
 from botocore import exceptions
+from yattag import Doc
 
 
 logging.basicConfig(level=logging.INFO)
@@ -45,12 +46,6 @@ CONFIG_PATH = "config\\config.json"
 def format_money_helper(num):
     """
     Formats a given number as a string in the format specified by the MONEY_FORMAT constant.
-
-    Args:
-        num (float): The number to format.
-
-    Returns:
-        str: The formatted string.
     """
     return MONEY_FORMAT.format(num)
 
@@ -58,14 +53,6 @@ def format_money_helper(num):
 def load_config(config_path=None):
     """
     Load configuration from a JSON file.
-
-    :param config: Path to the JSON configuration file. If None, 
-        the default CONFIG_PATH will be used.
-    :type config: str or None
-    :return: A dictionary containing the configuration data.
-    :rtype: dict
-    :raises FileNotFoundError: If the specified configuration file does not exist.
-    :raises json.JSONDecodeError: If the specified configuration file is not a valid JSON file.
     """
     if config_path is None:
         config_path = CONFIG_PATH
@@ -80,16 +67,6 @@ def load_config(config_path=None):
 def read_s3_file(bucket, key):
     """
     Reads a file from an S3 bucket.
-
-    Args:
-        bucket (str): The name of the S3 bucket.
-        key (str): The key of the file to read.
-
-    Returns:
-        str: The contents of the file as a string.
-
-    Raises:
-        botocore.exceptions.ClientError: If there was an error reading the file.
     """
     s3 = boto3.client("s3")
     try:
@@ -103,15 +80,6 @@ def read_s3_file(bucket, key):
 def send_email(source, to_addresses, subject, html_body, text_body=None):
     """
     Sends an email using Amazon SES (Simple Email Service).
-
-    :param source: The email address that the email will be sent from.
-    :param to_addresses: A list of email addresses that the email will be sent to.
-    :param subject: The subject line of the email.
-    :param html_body: The HTML body of the email.
-    :param text_body: The plain text body of the email. If not provided,
-        the HTML body will be used as the text body.
-    :return: The response from the SES service.
-    :raises: botocore.exceptions.ClientError: If there was an error sending the email.
     """
     ses = boto3.client("ses", region_name="us-east-1")
     if not text_body:
@@ -134,15 +102,6 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
 def parse_date_from_filename(filename):
     """
     Parses a date string from a given filename using a regular expression.
-
-    Args:
-        filename (str): The name of the file to parse the date from.
-
-    Returns:
-        datetime.date: The date parsed from the filename.
-
-    Raises:
-        AttributeError: If the regular expression fails to match the filename.
     """
     date_regex = re.compile(r"\d{4}-\d{2}-\d{2}")
     try:
@@ -157,18 +116,6 @@ def parse_date_from_filename(filename):
 def build_category_enum(config=None):
     """
     Builds an Enum object representing the categories defined in the configuration.
-
-    Args:
-        config (dict): A dictionary containing the configuration. If None, the default 
-        configuration will be loaded.
-
-    Returns:
-        Enum: An Enum object representing the categories defined in the configuration.
-
-    Raises:
-        KeyError: If the 'Categories' key is missing from the configuration.
-        TypeError: If the 'Categories' value is not a dictionary or if any of the values in 
-        the 'Categories' dictionary are not strings.
     """
     if config is None:
         config = load_config()
@@ -176,7 +123,6 @@ def build_category_enum(config=None):
         categories = config["Categories"]
         if not isinstance(categories, dict):
             raise TypeError("Categories should be a dictionary")
-        # If the categories dict values are not strings raise a TypeError
         if not all(isinstance(v, str) for v in categories.values()):
             raise TypeError("Categories should be a dictionary of strings")
         return Enum("Category", config["Categories"])
@@ -192,11 +138,6 @@ Category = build_category_enum()
 class IgnoredFrom(Enum):
     """
     An enumeration of possible values for the `Ignored From` column of the spreadsheet.
-
-    Attributes:
-        BUDGET (str): Indicates that the transaction is ignored from budget.
-        EVERYTHING (str): Indicates that the transaction is ignored from everything.
-        NOTHING (str): Indicates that the transaction is not ignored.
     """
 
     BUDGET = "budget"
@@ -207,14 +148,6 @@ class IgnoredFrom(Enum):
 class Transaction:
     """
     Represents a financial transaction.
-
-    Attributes:
-        date (datetime.date): The date of the transaction.
-        name (str): The name of the transaction.
-        account_number (int): The account number associated with the transaction.
-        amount (float): The amount of the transaction.
-        category (Category): The category of the transaction.
-        ignore (IgnoredFrom): The source of the transaction.
     """
 
     def __init__(self, transact_date, name, account_number, amount, category, ignore):
@@ -246,12 +179,6 @@ class Transaction:
     def from_row(row):
         """
         Creates a Transaction object from a row in a spreadsheet.
-
-        Args:
-            row (dict): A dictionary representing a row in a spreadsheet.
-
-        Returns:
-            Transaction: A Transaction object created from the given row.
         """
         try:
             transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
@@ -277,13 +204,6 @@ class Transaction:
 class Person:
     """
     A class representing a person with a name, email, account numbers, and transactions.
-
-    Attributes:
-        name (str): The name of the person.
-        email (str): The email address of the person.
-        account_numbers (List[int]): A list of account numbers associated with the person.
-        transactions (List[Transaction]): A list of Transaction objects representing the person's
-            transactions.
     """
 
     def __init__(self, name, email, account_numbers, transactions=None):
@@ -310,9 +230,6 @@ class Person:
     def add_transaction(self, transaction):
         """
         Adds a transaction to the list of transactions for this account.
-
-        Args:
-            transaction (Transaction): The transaction to add.
         """
         self.transactions.append(transaction)
 
@@ -320,14 +237,6 @@ class Person:
         """
         Calculates the total expenses for the given category or for all
         categories if no category is specified.
-
-        Args:
-            category (str, optional): The category for which to calculate expenses.
-            Defaults to None.
-
-        Returns:
-            float: The total expenses for the given category or for all categories
-            if no category is specified.
         """
         if category:
             return sum(t.amount for t in self.transactions if t.category == category)
@@ -337,25 +246,6 @@ class Person:
 class Summary:
     """
     A class representing a summary of transaction data for a given date.
-
-    Attributes:
-        date (datetime.date): The date of the summary.
-        owner (str): The owner of the transaction data.
-        people (list): A list of `Person` objects representing the people involved
-            in the transactions.
-
-    Methods:
-        __init__(self, summary_date, config=None): Initializes a new `Summary` object.
-        initialize_people(self, people_config): Initializes a list of `Person` objects based on the
-            provided people configuration.
-        add_transactions_from_spreadsheet(self, spreadsheet_content): Parses transaction data from a
-            spreadsheet and adds it to the analyzer.
-        add_persons_transactions(self, parsed_transactions, person): Adds a list of parsed
-            transactions to a given person's account.
-        add_transactions(self, parsed_transactions): Adds parsed transactions to each person's
-            transaction history.
-        calculate_2_person_difference(self, person1, person2, category=None): Calculates the
-            difference in expenses between two people for a given category.
     """
 
     def __init__(self, summary_date, config=None):
@@ -379,17 +269,6 @@ class Summary:
     def initialize_people(self, people_config):
         """
         Initializes a list of Person objects based on the provided people configuration.
-
-        Args:
-            people_config (list): A list of dictionaries containing the configuration
-                for each person.
-
-        Returns:
-            list: A list of Person objects initialized with the provided configuration.
-
-        Raises:
-            TypeError: If the provided people configuration is not a list.
-            KeyError: If the provided people configuration is missing a required key.
         """
         try:
             return [
@@ -408,12 +287,6 @@ class Summary:
     def add_transactions_from_spreadsheet(self, spreadsheet_content):
         """
         Parses transaction data from a spreadsheet and adds it to the analyzer.
-
-        Args:
-            spreadsheet_content (str): The contents of the spreadsheet to parse.
-
-        Returns:
-            None
         """
         parsed_transactions = SpreadsheetParser.parse(spreadsheet_content)
         self.add_transactions(parsed_transactions)
@@ -421,11 +294,6 @@ class Summary:
     def add_persons_transactions(self, parsed_transactions, person):
         """
         Adds a list of parsed transactions to a given person's account.
-
-        :param parsed_transactions: A list of `Transaction` objects to add to the person's account.
-        :type parsed_transactions: list[Transaction]
-        :param person: The `Person` object to add the transactions to.
-        :type person: Person
         """
         for transaction in parsed_transactions:
             if (
@@ -438,8 +306,6 @@ class Summary:
     def add_transactions(self, parsed_transactions):
         """
         Adds parsed transactions to each person's transaction history.
-
-        :param parsed_transactions: A list of dictionaries containing parsed transaction data.
         """
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
@@ -447,97 +313,93 @@ class Summary:
     def calculate_2_person_difference(self, person1, person2, category=None):
         """
         Calculates the difference in expenses between two people for a given category.
-
-        Args:
-            person1 (Person): The first person to compare.
-            person2 (Person): The second person to compare.
-            category (str, optional): The category of expenses to compare.
-                If None, all expenses are compared.
-
-        Returns:
-            float: The difference in expenses between person1 and person2 for the given category.
         """
         return person1.calculate_expenses(category) - person2.calculate_expenses(
             category
         )
-    
+
     def generate_email_data(self):
         """
-        Generates an HTML email containing a summary of expenses for each person in the given
-        summary object.
-
-        Args:
-            summary (Summary): The summary object containing the data to be included in the email.
-
-        Returns:
-            Tuple[str, List[str], str, str]: A tuple containing the email sender, recipients,
-            subject, and HTML body.
+        Generates email data for the monthly summary report.
         """
-        html = """<html>
-        <head>
-            <style>
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                }
-                
-                th, td {
-                    border: 1px solid black;
-                    padding: 8px 12px;  /* Add padding to table cells */
-                    text-align: left;
-                }
-
-                th {
-                    background-color: #f2f2f2;  /* A light background color for headers */
-                }
-            </style>
-        </head>
-        <body>"""
-
-        html += "<table border='1'>\n<thead>\n<tr>\n<th></th>\n"
-        for category in Category:
-            html += f"<th>{category.value}</th>\n"
-        html += "<th>Total</th>\n</tr>\n</thead>\n<tbody>\n"
-
-        for person in self.people:
-            html += "<tr>\n"
-            html += f"<td>{person.name}</td>\n"
-            for category in Category:
-                html += f"<td>{format_money_helper(person.calculate_expenses(category))}</td>\n"
-            html += f"<td>{format_money_helper(person.calculate_expenses())}</td>\n"
-            html += "</tr>\n"
-
-        # Assuming there will always be exactly 2 people for the difference calculation
-        if len(self.people) == 2:
-            person1, person2 = self.people
-            html += "<tr>\n"
-            html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
-            for category in Category:
-                html += f"<td>{format_money_helper(self.calculate_2_person_difference(person1, person2, category))}</td>\n"
-            html += f"<td>{format_money_helper(self.calculate_2_person_difference(person1, person2))}</td>\n"
-            html += "</tr>\n"
-
-        html += "</tbody>\n</table>\n</body>\n</html>"
+        doc, tag, text = Doc().tagtext()
+        doc.asis("<!DOCTYPE html>")
+        with tag("html"):
+            # HTML head
+            with tag("head"):
+                doc.asis(
+                    "<style>table {border-collapse: collapse; width: 100%;} \
+                        th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
+                        th {background-color: #f2f2f2;}</style>"
+                )
+            # HTML body
+            with tag("body"):
+                # Body consists of a table
+                with tag("table", border="1"):
+                    # Table header
+                    with tag("thead"):
+                        with tag("tr"):
+                            with tag("th"):
+                                text("")
+                            for category in Category:
+                                with tag("th"):
+                                    text(category.value)
+                            with tag("th"):
+                                text("Total")
+                    # Table body
+                    with tag("tbody"):
+                        # Create a row for each person
+                        with tag("tr"):
+                            for person in self.people:
+                                with tag("td"):
+                                    text(person.name)
+                                for category in Category:
+                                    with tag("td"):
+                                        text(
+                                            format_money_helper(
+                                                person.calculate_expenses(category)
+                                            )
+                                        )
+                                with tag("td"):
+                                    text(
+                                        format_money_helper(person.calculate_expenses())
+                                    )
+                        # If there are only two people, create a row for the differences
+                        if len(self.people) == 2:
+                            person1, person2 = self.people
+                            with tag("tr"):
+                                with tag("td"):
+                                    text(
+                                        f"Difference ({person1.name} - {person2.name})"
+                                    )
+                                for category in Category:
+                                    with tag("td"):
+                                        text(
+                                            format_money_helper(
+                                                self.calculate_2_person_difference(
+                                                    person1, person2, category
+                                                )
+                                            )
+                                        )
+                                with tag("td"):
+                                    text(
+                                        format_money_helper(
+                                            self.calculate_2_person_difference(
+                                                person1, person2
+                                            )
+                                        )
+                                    )
         return (
             self.owner,
             [p.email for p in self.people],
             f"Monthly Summary - {self.date.strftime(DISPLAY_DATE_FORMAT)}",
-            html,
+            doc.getvalue(),
         )
 
 
 class SpreadsheetSummary(Summary):
     """
     A class representing a summary of transactions from a spreadsheet.
-
-    Attributes:
-        date (datetime): The date of the summary.
-        spreadsheet_content (list): A list of dictionaries representing the spreadsheet content.
-        config (dict, optional): A dictionary of configuration options.
-
-    Methods:
-        __init__(self, date, spreadsheet_content, config=None): Initializes a new instance of the
-            SpreadsheetSummary class.
     """
 
     def __init__(self, summary_date, spreadsheet_content, config=None):
@@ -554,12 +416,6 @@ class SpreadsheetParser:
     def parse(file_content):
         """
         Parses a CSV file and returns a list of Transaction objects.
-
-        Args:
-            file_content (str): The contents of the CSV file as a string.
-
-        Returns:
-            list: A list of Transaction objects parsed from the CSV file.
         """
         results = []
         reader = csv.DictReader(file_content.splitlines())
@@ -568,21 +424,14 @@ class SpreadsheetParser:
             if transaction:
                 results.append(transaction)
         return results
-    
+
 
 # MAIN
-def analyze_file(file_path):
+def analyze_s3_sheet(bucket, key):
     """
     Analyzes a file located at the given S3 file path, generates a summary of its contents,
     and sends an email with the summary to a list of recipients.
-
-    Args:
-        file_path (str): The S3 file path of the file to be analyzed.
-
-    Returns:
-        None
     """
-    bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary_date = parse_date_from_filename(key)
     summary = SpreadsheetSummary(summary_date, file_content)
@@ -594,16 +443,10 @@ def lambda_handler(event, context):
     """
     This function is the entry point for the AWS Lambda function. It is triggered by an S3 event
     and analyzes the file that triggered the event.
-
-    :param event: The S3 event that triggered the Lambda function.
-    :type event: dict
-    :param context: The context object for the Lambda function.
-    :type context: object
     """
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]
-    file_path = f"s3://{bucket}/{key}"
-    analyze_file(file_path)
+    analyze_s3_sheet(bucket, key)
 
 
 if __name__ == "__main__":

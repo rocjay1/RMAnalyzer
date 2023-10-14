@@ -416,12 +416,6 @@ class SpreadsheetParser:
     def parse(file_content):
         """
         Parses a CSV file and returns a list of Transaction objects.
-
-        Args:
-            file_content (str): The contents of the CSV file as a string.
-
-        Returns:
-            list: A list of Transaction objects parsed from the CSV file.
         """
         results = []
         reader = csv.DictReader(file_content.splitlines())

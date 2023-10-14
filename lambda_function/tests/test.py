@@ -460,8 +460,6 @@ class TestCalculateExpenses(unittest.TestCase):
 # Make unit tests for calculate_2_person_difference
 class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
-        # Must be called on a valid SpreadsheetSummary object
-        # Removing "budget" from "Ignored From" to make the calculation more interesting
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
@@ -553,10 +551,9 @@ class TestParse(unittest.TestCase):
 # The result should be a tuple matching
 #   summary.owner,[p.email for p in summary.people],f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
 #   html
-# where html starts with "<html>" and ends with "</html>"
+# where html starts with "<!DOCTYPE html>" and ends with "</html>"
 class TestGenerateEmailData(unittest.TestCase):
     def setUp(self):
-        # Must be called on a valid Summary object
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
 2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
         self.config = CONFIG
@@ -575,13 +572,9 @@ class TestGenerateEmailData(unittest.TestCase):
         self.assertTrue(result[3].endswith("</html>"))
 
 
-# Test analyze_file
+# Test analyze_s3_sheet
 # Already tested most of the functionality in other tests
 # Just need to confirm the various functions are called
-# Also test
-#   bucket, key = file_path.replace("s3://", "").split("/", 1)
-# On a path like "s3://test-bucket/test-key" sets
-# bucket = "test-bucket" and key = "test-key"
 # Since send_email called within analyze_file uses ses.send_email, mock_ses must be used
 class TestAnalyzeS3Sheet(unittest.TestCase):
     def setUp(self):
@@ -599,7 +592,7 @@ class TestAnalyzeS3Sheet(unittest.TestCase):
         mock_subject = "mocked_subject"
         mock_html_body = "mocked_html_body"
 
-        # Here we patch only the 'generate_email_data' method, not the entire class.
+        # Here we patch only the 'generate_email_data' method, not the entire class
         with patch("lambda_function.src.main.read_s3_file", mock_read_s3_file), patch(
             "lambda_function.src.main.SpreadsheetSummary.generate_email_data",
             MagicMock(

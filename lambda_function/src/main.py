@@ -467,20 +467,24 @@ class Summary:
         Generates email data for the monthly summary report.
 
         Returns:
-            Tuple: A tuple containing the owner's email, a list of people's emails, 
+            Tuple: A tuple containing the owner's email, a list of people's emails,
                 the email subject, and the email body.
         """
         doc, tag, text = Doc().tagtext()
         doc.asis("<!DOCTYPE html>")
         with tag("html"):
+            # HTML head
             with tag("head"):
                 doc.asis(
                     "<style>table {border-collapse: collapse; width: 100%;} \
                         th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
                         th {background-color: #f2f2f2;}</style>"
                 )
+            # HTML body
             with tag("body"):
+                # Body consists of a table
                 with tag("table", border="1"):
+                    # Table header
                     with tag("thead"):
                         with tag("tr"):
                             with tag("th"):
@@ -490,7 +494,9 @@ class Summary:
                                     text(category.value)
                             with tag("th"):
                                 text("Total")
+                    # Table body
                     with tag("tbody"):
+                        # Create a row for each person
                         with tag("tr"):
                             for person in self.people:
                                 with tag("td"):
@@ -506,6 +512,7 @@ class Summary:
                                     text(
                                         format_money_helper(person.calculate_expenses())
                                     )
+                        # If there are only two people, create a row for the difference
                         if len(self.people) == 2:
                             person1, person2 = self.people
                             with tag("tr"):

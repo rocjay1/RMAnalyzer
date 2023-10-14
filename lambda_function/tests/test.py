@@ -571,7 +571,7 @@ class TestGenerateEmailData(unittest.TestCase):
             f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
         )
         # We've tested the other functions, so just test that the html starts and ends with the correct strings
-        self.assertTrue(result[3].startswith("<html>"))
+        self.assertTrue(result[3].startswith("<!DOCTYPE html>"))
         self.assertTrue(result[3].endswith("</html>"))
 
 

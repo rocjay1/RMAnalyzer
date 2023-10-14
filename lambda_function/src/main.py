@@ -28,6 +28,7 @@ import json
 import re
 import boto3
 from botocore import exceptions
+from yattag import Doc
 
 
 logging.basicConfig(level=logging.INFO)
@@ -59,7 +60,7 @@ def load_config(config_path=None):
     """
     Load configuration from a JSON file.
 
-    :param config: Path to the JSON configuration file. If None, 
+    :param config: Path to the JSON configuration file. If None,
         the default CONFIG_PATH will be used.
     :type config: str or None
     :return: A dictionary containing the configuration data.
@@ -159,7 +160,7 @@ def build_category_enum(config=None):
     Builds an Enum object representing the categories defined in the configuration.
 
     Args:
-        config (dict): A dictionary containing the configuration. If None, the default 
+        config (dict): A dictionary containing the configuration. If None, the default
         configuration will be loaded.
 
     Returns:
@@ -167,7 +168,7 @@ def build_category_enum(config=None):
 
     Raises:
         KeyError: If the 'Categories' key is missing from the configuration.
-        TypeError: If the 'Categories' value is not a dictionary or if any of the values in 
+        TypeError: If the 'Categories' value is not a dictionary or if any of the values in
         the 'Categories' dictionary are not strings.
     """
     if config is None:
@@ -460,69 +461,80 @@ class Summary:
         return person1.calculate_expenses(category) - person2.calculate_expenses(
             category
         )
-    
+
     def generate_email_data(self):
         """
-        Generates an HTML email containing a summary of expenses for each person in the given
-        summary object.
-
-        Args:
-            summary (Summary): The summary object containing the data to be included in the email.
+        Generates email data for the monthly summary report.
 
         Returns:
-            Tuple[str, List[str], str, str]: A tuple containing the email sender, recipients,
-            subject, and HTML body.
+            Tuple: A tuple containing the owner's email, a list of people's emails, 
+                the email subject, and the email body.
         """
-        html = """<html>
-        <head>
-            <style>
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                }
-                
-                th, td {
-                    border: 1px solid black;
-                    padding: 8px 12px;  /* Add padding to table cells */
-                    text-align: left;
-                }
-
-                th {
-                    background-color: #f2f2f2;  /* A light background color for headers */
-                }
-            </style>
-        </head>
-        <body>"""
-
-        html += "<table border='1'>\n<thead>\n<tr>\n<th></th>\n"
-        for category in Category:
-            html += f"<th>{category.value}</th>\n"
-        html += "<th>Total</th>\n</tr>\n</thead>\n<tbody>\n"
-
-        for person in self.people:
-            html += "<tr>\n"
-            html += f"<td>{person.name}</td>\n"
-            for category in Category:
-                html += f"<td>{format_money_helper(person.calculate_expenses(category))}</td>\n"
-            html += f"<td>{format_money_helper(person.calculate_expenses())}</td>\n"
-            html += "</tr>\n"
-
-        # Assuming there will always be exactly 2 people for the difference calculation
-        if len(self.people) == 2:
-            person1, person2 = self.people
-            html += "<tr>\n"
-            html += f"<td>Difference ({person1.name} - {person2.name})</td>\n"
-            for category in Category:
-                html += f"<td>{format_money_helper(self.calculate_2_person_difference(person1, person2, category))}</td>\n"
-            html += f"<td>{format_money_helper(self.calculate_2_person_difference(person1, person2))}</td>\n"
-            html += "</tr>\n"
-
-        html += "</tbody>\n</table>\n</body>\n</html>"
+        doc, tag, text = Doc().tagtext()
+        doc.asis("<!DOCTYPE html>")
+        with tag("html"):
+            with tag("head"):
+                doc.asis(
+                    "<style>table {border-collapse: collapse; width: 100%;} \
+                        th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
+                        th {background-color: #f2f2f2;}</style>"
+                )
+            with tag("body"):
+                with tag("table", border="1"):
+                    with tag("thead"):
+                        with tag("tr"):
+                            with tag("th"):
+                                text("")
+                            for category in Category:
+                                with tag("th"):
+                                    text(category.value)
+                            with tag("th"):
+                                text("Total")
+                    with tag("tbody"):
+                        with tag("tr"):
+                            for person in self.people:
+                                with tag("td"):
+                                    text(person.name)
+                                for category in Category:
+                                    with tag("td"):
+                                        text(
+                                            format_money_helper(
+                                                person.calculate_expenses(category)
+                                            )
+                                        )
+                                with tag("td"):
+                                    text(
+                                        format_money_helper(person.calculate_expenses())
+                                    )
+                        if len(self.people) == 2:
+                            person1, person2 = self.people
+                            with tag("tr"):
+                                with tag("td"):
+                                    text(
+                                        f"Difference ({person1.name} - {person2.name})"
+                                    )
+                                for category in Category:
+                                    with tag("td"):
+                                        text(
+                                            format_money_helper(
+                                                self.calculate_2_person_difference(
+                                                    person1, person2, category
+                                                )
+                                            )
+                                        )
+                                with tag("td"):
+                                    text(
+                                        format_money_helper(
+                                            self.calculate_2_person_difference(
+                                                person1, person2
+                                            )
+                                        )
+                                    )
         return (
             self.owner,
             [p.email for p in self.people],
             f"Monthly Summary - {self.date.strftime(DISPLAY_DATE_FORMAT)}",
-            html,
+            doc.getvalue(),
         )
 
 
@@ -568,7 +580,7 @@ class SpreadsheetParser:
             if transaction:
                 results.append(transaction)
         return results
-    
+
 
 # MAIN
 def analyze_file(file_path):

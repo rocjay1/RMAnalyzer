@@ -4,7 +4,7 @@
     },
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
-    "python.defaultInterpreterPath": "C:\\Repos\\RMAnalyzer\\rm-analyzer\\Scripts\\python.exe",
+    // "python.defaultInterpreterPath": "C:\\Repos\\RMAnalyzer\\RMAnalyzer\\venv\\Scripts\\python.exe",
     "python.terminal.activateEnvInCurrentTerminal": true,
     "python.testing.unittestArgs": [
         "-v",

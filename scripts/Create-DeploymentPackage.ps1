@@ -3,7 +3,7 @@
 $compress = @{
     Path = '.\dist\package\*', '.\dist\main.py', '.\config'
     CompressionLevel = 'Optimal'
-    DestinationPath = '.\dist\package.zip'
+    DestinationPath = '.\dist\dist.zip'
 }
 
 Compress-Archive @compress -Force

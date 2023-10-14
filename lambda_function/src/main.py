@@ -590,7 +590,7 @@ class SpreadsheetParser:
 
 
 # MAIN
-def analyze_file(file_path):
+def analyze_s3_sheet(bucket, key):
     """
     Analyzes a file located at the given S3 file path, generates a summary of its contents,
     and sends an email with the summary to a list of recipients.
@@ -601,7 +601,6 @@ def analyze_file(file_path):
     Returns:
         None
     """
-    bucket, key = file_path.replace("s3://", "").split("/", 1)
     file_content = read_s3_file(bucket, key)
     summary_date = parse_date_from_filename(key)
     summary = SpreadsheetSummary(summary_date, file_content)
@@ -621,8 +620,7 @@ def lambda_handler(event, context):
     """
     bucket = event["Records"][0]["s3"]["bucket"]["name"]
     key = event["Records"][0]["s3"]["object"]["key"]
-    file_path = f"s3://{bucket}/{key}"
-    analyze_file(file_path)
+    analyze_s3_sheet(bucket, key)
 
 
 if __name__ == "__main__":

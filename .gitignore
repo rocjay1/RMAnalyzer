@@ -2,3 +2,6 @@ venv/
 .vscode/
 .python-version
 .coverage
+lambda_function/__pycache__
+lambda_function/src/__pycache__
+lambda_function/tests/__pycache__

@@ -6,3 +6,4 @@ lambda_function/__pycache__
 lambda_function/src/__pycache__
 lambda_function/tests/__pycache__
 config/config.json
+dist/

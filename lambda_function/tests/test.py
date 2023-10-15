@@ -1,5 +1,5 @@
 # pylint: disable-all
-# Desc: Unit tests for RMAnalyzer
+# Description: Unit tests for RMAnalyzer
 # Author: Rocco Davino
 # Notes: To run coverage, run the following command from the root directory:
 #        coverage run -m lambda_function.tests.test

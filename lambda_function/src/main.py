@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG_PATH = os.path.relpath("./config.json")
+CONFIG_PATH = os.path.relpath("./config/config.json")
 
 
 # HELPER FUNCTIONS

@@ -20,6 +20,7 @@ Author: Rocco Davino
 """
 
 
+import os
 import logging
 from datetime import datetime, date
 import csv
@@ -30,7 +31,6 @@ import boto3
 from botocore import exceptions
 from yattag import Doc
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG_PATH = "config\\config.json"
+CONFIG_PATH = os.path.relpath("./config/config.json")
 
 
 # HELPER FUNCTIONS
@@ -328,9 +328,10 @@ class Summary:
             # HTML head
             with tag("head"):
                 doc.asis(
-                    "<style>table {border-collapse: collapse; width: 100%;} \
-                        th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
-                        th {background-color: #f2f2f2;}</style>"
+                    "<style>body {display: flex; justify-content: center;} \
+                    table {border-collapse: collapse; width: 75%} \
+                    th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
+                    th {background-color: #f2f2f2;}</style>"
                 )
             # HTML body
             with tag("body"):
@@ -349,8 +350,8 @@ class Summary:
                     # Table body
                     with tag("tbody"):
                         # Create a row for each person
-                        with tag("tr"):
-                            for person in self.people:
+                        for person in self.people:
+                            with tag("tr"):
                                 with tag("td"):
                                     text(person.name)
                                 for category in Category:
@@ -369,9 +370,7 @@ class Summary:
                             person1, person2 = self.people
                             with tag("tr"):
                                 with tag("td"):
-                                    text(
-                                        f"Difference ({person1.name} - {person2.name})"
-                                    )
+                                    text("Difference")
                                 for category in Category:
                                     with tag("td"):
                                         text(

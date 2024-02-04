@@ -31,8 +31,8 @@ provider:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
         
 # you can overwrite defaults here
- stage: prd
- region: us-east-1
+  stage: prd
+  region: us-east-1
 
 # you can add statements to the Lambda function's IAM Role here
 #  iam:

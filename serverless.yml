@@ -74,7 +74,8 @@ functions:
       - s3:
           bucket: rm-analyzer-sheets-prd
           event: s3:ObjectCreated:Put
-          
+          existing: true
+
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details

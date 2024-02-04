@@ -1,22 +1,25 @@
 {
     "People": [
         {
-            "Name": "Person 1",
+            "Name": "Rocco",
             "Accounts": [
-                1234,
-                4321
+                1122,
+                3550,
+                3701
             ],
-            "Email": "p1@gmail.com"
+            "Email": "jasonroc19@gmail.com"
         },
         {
-            "Name": "Person 2",
+            "Name": "Tori",
             "Accounts": [
-                5678
+                2972,
+                2681,
+                4985
             ],
-            "Email": "p2@gmail.com"
+            "Email": "vcbarr1@gmail.com"
         }
     ],
-    "OwnerEmail": "p1@gmail.com",
+    "OwnerEmail": "jasonroc19@gmail.com",
     "Categories": {
         "DINING": "Dining & Drinks",
         "GROCERIES": "Groceries",

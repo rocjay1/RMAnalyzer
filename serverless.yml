@@ -129,7 +129,7 @@ resources:
       Properties:
         Action: "lambda:InvokeFunction"
         FunctionName:
-          Fn::GetAtt: [rmanalyzer--dev, Arn]
+          Fn::GetAtt: [LambdaUnderscorehandlerLambdaFunction, Arn]
         Principal: "s3.amazonaws.com"
         SourceAccount: "790151521070"
         SourceArn: "arn:aws:s3:::rm-analyzer-sheets-prd"

@@ -1,0 +1,28 @@
+{
+    "People": [
+        {
+            "Name": "Person 1",
+            "Accounts": [
+                1234,
+                4321
+            ],
+            "Email": "p1@gmail.com"
+        },
+        {
+            "Name": "Person 2",
+            "Accounts": [
+                5678
+            ],
+            "Email": "p2@gmail.com"
+        }
+    ],
+    "OwnerEmail": "p1@gmail.com",
+    "Categories": {
+        "DINING": "Dining & Drinks",
+        "GROCERIES": "Groceries",
+        "PETS": "Pets",
+        "BILLS": "Bills & Utilities",
+        "PURCHASES": "Shared Purchases",
+        "SUBSCRIPTIONS": "Shared Subscriptions"
+    }
+}

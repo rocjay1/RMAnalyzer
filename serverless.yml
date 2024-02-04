@@ -23,6 +23,23 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: python3.11
+  iam:
+    role:
+      managedPolicies:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+        - "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      statements:
+        - Effect: "Allow"
+          Principal:
+            Service: "s3.amazonaws.com"
+          Action: "lambda:InvokeFunction"
+          Resource: "arn:aws:lambda:us-east-1:790151521070:function:RMAnalyzer-prd"
+          Condition:
+            StringEquals:
+              "AWS:SourceAccount": "790151521070"
+            ArnLike:
+              "AWS:SourceArn": "arn:aws:s3:::rm-analyzer-sheets-prd"
 
 # you can overwrite defaults here
 #  stage: dev

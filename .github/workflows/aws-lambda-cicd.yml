@@ -6,8 +6,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    concurrency: 
-      group: rma-build-test
 
     steps:
       - name: Checkout code
@@ -25,9 +23,8 @@ jobs:
         run: python -m unittest discover
   
   build:
+    needs: test
     runs-on: ubuntu-latest
-    concurrency: 
-      group: rma-build-test
 
     steps:
       - name: Checkout code

@@ -1,26 +1,9 @@
 """
 This script is used to generate a monthly summary of expenses from a spreadsheet.
-It is meant to be run as an AWS Lambda function triggered by an S3 event.
-The spreadsheet should be an export from Rocket Money.
-The configuration file should be stored in an S3 bucket.
-The Lambda function should have access to the S3 bucket and SES.
-
-The script defines several helper functions for loading configuration files from S3,
-reading files from S3, and sending emails using Amazon SES. It also defines two classes:
-Category and Transaction.
-
-Category is an enumeration representing the different categories of expenses, and
-Transaction is a class representing a single transaction, with attributes for the date,
-name, account number, amount, category, and whether or not to ignore the transaction.
-
-The script also defines a Person class, with attributes for the person's name, email,
-account numbers, and a list of transactions (if available).
 
 Author: Rocco Davino
 """
 
-
-import os
 import logging
 from datetime import datetime, date
 import csv
@@ -39,7 +22,7 @@ logger = logging.getLogger(__name__)
 DATE_FORMAT = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
-CONFIG_PATH = os.path.relpath("./config/config.json")
+CONFIG_DICT = {"bucket": "rmanalyzer-config", "key": "config.json"}
 
 
 # HELPER FUNCTIONS
@@ -50,16 +33,16 @@ def format_money_helper(num):
     return MONEY_FORMAT.format(num)
 
 
-def load_config(config_path=None):
+def load_config(config_dict=None):
     """
     Load configuration from a JSON file.
     """
-    if config_path is None:
-        config_path = CONFIG_PATH
+    if config_dict is None:
+        config_dict = CONFIG_DICT
     try:
-        with open(config_path, "r", encoding="utf-8") as config_file:
-            return json.load(config_file)
-    except (FileNotFoundError, json.JSONDecodeError) as ex:
+        config = read_s3_file(config_dict["bucket"], config_dict["key"])
+        return json.loads(config)
+    except json.JSONDecodeError as ex:
         logger.error("Error loading config: %s", ex)
         raise
 
@@ -113,26 +96,19 @@ def parse_date_from_filename(filename):
         raise
 
 
-def build_category_enum(config=None):
-    """
-    Builds an Enum object representing the categories defined in the configuration.
-    """
-    if config is None:
-        config = load_config()
-    try:
-        categories = config["Categories"]
-        if not isinstance(categories, dict):
-            raise TypeError("Categories should be a dictionary")
-        if not all(isinstance(v, str) for v in categories.values()):
-            raise TypeError("Categories should be a dictionary of strings")
-        return Enum("Category", config["Categories"])
-    except (KeyError, TypeError):
-        logger.error("Invalid or missing 'Categories' in configuration.")
-        raise
-
-
 # CLASSES
-Category = build_category_enum()
+class Category(Enum):
+    """
+    An enumeration of possible values for the `Category` column of the spreadsheet.
+    """
+
+    DINING = "Dining & Drinks"
+    GROCERIES = "Groceries"
+    PETS = "Pets"
+    BILLS = "Bills & Utilities"
+    PURCHASES = "Shared Purchases"
+    SUBSCRIPTIONS = "Shared Subscriptions"
+    TRAVEL = "Travel & Vacation"
 
 
 class IgnoredFrom(Enum):
@@ -180,6 +156,7 @@ class Transaction:
         """
         Creates a Transaction object from a row in a spreadsheet.
         """
+
         try:
             transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
             transaction_name = row["Name"]
@@ -322,6 +299,7 @@ class Summary:
         """
         Generates email data for the monthly summary report.
         """
+
         doc, tag, text = Doc().tagtext()
         doc.asis("<!DOCTYPE html>")
         with tag("html"):

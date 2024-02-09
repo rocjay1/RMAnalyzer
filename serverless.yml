@@ -22,7 +22,7 @@ frameworkVersion: '3'
 
 provider:
   name: aws
-  runtime: python3.11
+  runtime: python3.12
   iam:
     role:
       managedPolicies:
@@ -70,7 +70,7 @@ plugins:
 functions:
   process_transactions:
     handler: lambda_function.src.main.lambda_handler
-    events: # All events associated with this function
+    events:
       - s3:
           bucket: rm-analyzer-sheets-prd
           event: s3:ObjectCreated:Put

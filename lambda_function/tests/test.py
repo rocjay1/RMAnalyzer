@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 from unittest.mock import patch, mock_open
 import boto3
 from botocore import exceptions
-from moto import mock_s3, mock_ses
+from moto import mock_aws
 from lambda_function.src.main import *
 
 
@@ -33,7 +33,7 @@ CONFIG = {
         "PETS": "Pets",
         "BILLS": "Bills & Utilities",
         "PURCHASES": "Shared Purchases",
-        "SUBSCRIPTIONS": "Shared Subscriptions"
+        "SUBSCRIPTIONS": "Shared Subscriptions",
     },
 }
 
@@ -45,27 +45,18 @@ class TestLoadConfig(unittest.TestCase):
         self.config = CONFIG
 
     def test_load_config_bad_json(self):
-        # Mocking the json.load function to raise JSONDecodeError
-        mock_json_load = MagicMock(side_effect=json.decoder.JSONDecodeError("", "", 0))
+        # Mock the JSON fetched from S3
+        mock_read_s3 = MagicMock(return_value="bad_JSON")
 
-        # Use mock_open provided by unittest.mock library
-        m_open = mock_open()
-
-        with patch("json.load", mock_json_load):
-            with patch("builtins.open", m_open):
-                with self.assertRaises(json.decoder.JSONDecodeError):
-                    load_config("any_path_will_do.json")
-
-
-    def test_load_config_bad_file(self):
-        with self.assertRaises(FileNotFoundError):
-            load_config("bad_file")
+        with patch("lambda_function.src.main.read_s3_file", mock_read_s3):
+            with self.assertRaises(json.JSONDecodeError):
+                load_config()
 
     def test_load_config_good_json(self):
-        mock_fp = MagicMock(return_value=self.config)
-        with patch("json.load", mock_fp):
+        result_str = '{\n    "People": [\n        {\n            "Name": "George",\n            "Accounts": [\n                1234,\n                4321\n            ],\n            "Email": "boygeorge@gmail.com"\n        },\n        {\n            "Name": "Tootie",\n            "Accounts": [\n                1313,\n                2121\n            ],\n            "Email": "tuttifruity@hotmail.com"\n        }\n    ],\n    "OwnerEmail": "bebas@gmail.com",\n    "Categories": {\n        "DINING": "Dining & Drinks",\n        "GROCERIES": "Groceries",\n        "PETS": "Pets",\n        "BILLS": "Bills & Utilities",\n        "PURCHASES": "Shared Purchases",\n        "SUBSCRIPTIONS": "Shared Subscriptions"\n    }\n}'
+        mock_read_s3 = MagicMock(return_value=result_str)
+        with patch("lambda_function.src.main.read_s3_file", mock_read_s3):
             result = load_config()
-            mock_fp.assert_called_once()
             self.assertEqual(result, self.config)
 
 
@@ -76,7 +67,7 @@ class TestReadS3File(unittest.TestCase):
         self.key = "test-key"
         self.data = "Hello, World!"
 
-    @mock_s3
+    @mock_aws
     def test_read_s3_file_success(self):
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=self.bucket)
@@ -84,14 +75,14 @@ class TestReadS3File(unittest.TestCase):
         result = read_s3_file(self.bucket, self.key)
         self.assertEqual(result, self.data)
 
-    @mock_s3
+    @mock_aws
     def test_read_s3_file_key_failure(self):
         s3 = boto3.client("s3")
         s3.create_bucket(Bucket=self.bucket)
         with self.assertRaises(exceptions.ClientError):
             read_s3_file(self.bucket, "nonexistent-key")
 
-    @mock_s3
+    @mock_aws
     def test_read_s3_file_bucket_failure(self):
         s3 = boto3.client("s3")
         with self.assertRaises(exceptions.ClientError):
@@ -106,7 +97,7 @@ class TestSendEmail(unittest.TestCase):
         self.subject = "Test"
         self.html_body = "<p>Test</p>"
 
-    @mock_ses
+    @mock_aws
     def test_send_email(self):
         ses = boto3.client("ses", region_name="us-east-1")
         ses.verify_email_identity(EmailAddress="bebas@gmail.com")
@@ -115,7 +106,7 @@ class TestSendEmail(unittest.TestCase):
         )
         self.assertIn("MessageId", response)
 
-    @mock_ses
+    @mock_aws
     def test_send_email_bad_source(self):
         ses = boto3.client("ses", region_name="us-east-1")
         with self.assertRaises(exceptions.ClientError):
@@ -137,50 +128,6 @@ class TestParseDateFromFilename(unittest.TestCase):
         f = "expenses_2021-12.csv"
         with self.assertRaises(AttributeError):
             parse_date_from_filename(f)
-
-
-# Test build_category_enum
-class TestBuildCategoryEnum(unittest.TestCase):
-    def setUp(self):
-        self.config = CONFIG
-
-    def test_build_category_enum_valid_config(self):
-        category_enum = build_category_enum(self.config)
-        expected_enum = {
-            "DINING": "Dining & Drinks",
-            "GROCERIES": "Groceries",
-            "PETS": "Pets",
-            "BILLS": "Bills & Utilities",
-            "PURCHASES": "Shared Purchases",
-            "SUBSCRIPTIONS": "Shared Subscriptions"
-        }
-        # Get the keys and values of the enums
-        category_enum_keys, category_enum_values = [], []
-        for key in category_enum:
-            category_enum_keys.append(key.name)
-            category_enum_values.append(key.value)
-        expected_enum_keys, expected_enum_values = [], []
-        for k, v in expected_enum.items():
-            expected_enum_keys.append(k)
-            expected_enum_values.append(v)
-        # Assert the keys and values match
-        self.assertListEqual(category_enum_keys, expected_enum_keys)
-        self.assertListEqual(category_enum_values, expected_enum_values)
-
-    def test_build_category_enum_invalid_config_key(self):
-        c = {"bad": "config"}
-        with self.assertRaises(KeyError):
-            build_category_enum(c)
-
-    def test_build_category_enum_invalid_config_value(self):
-        c = {"Categories": ["bad", "config"]}
-        with self.assertRaises(TypeError):
-            build_category_enum(c)
-
-    def test_build_category_enum_invalid_category_value(self):
-        c = {"Categories": {"DINING": ["bad", "config"]}}
-        with self.assertRaises(TypeError):
-            build_category_enum(c)
 
 
 # Test the Transaction class constructor
@@ -561,7 +508,9 @@ class TestGenerateEmailData(unittest.TestCase):
         self.config = CONFIG
 
     def test_generate_email_data(self):
-        summary = SpreadsheetSummary(date.today(), self.file_content, config=self.config)
+        summary = SpreadsheetSummary(
+            date.today(), self.file_content, config=self.config
+        )
         result = summary.generate_email_data()
         self.assertEqual(result[0], summary.owner)
         self.assertEqual(result[1], [p.email for p in summary.people])

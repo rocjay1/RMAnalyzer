@@ -26,6 +26,7 @@
         "PETS": "Pets",
         "BILLS": "Bills & Utilities",
         "PURCHASES": "Shared Purchases",
-        "SUBSCRIPTIONS": "Shared Subscriptions"
+        "SUBSCRIPTIONS": "Shared Subscriptions",
+        "TRAVEL": "Travel & Vacation"
     }
 }

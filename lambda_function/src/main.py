@@ -19,7 +19,7 @@ from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
 from mypy_boto3_ses.client import SESClient
 from mypy_boto3_ses.type_defs import SendEmailResponseTypeDef
 from botocore import exceptions
-from yattag import Doc, SimpleDoc
+import yattag
 
 
 logging.basicConfig(level=logging.INFO)
@@ -300,8 +300,8 @@ class Summary:
         """
         Generates email data for the monthly summary report.
         """
-        doc_tuple: tuple[SimpleDoc, Any, Any] = (
-            Doc().tagtext()
+        doc_tuple: tuple[yattag.SimpleDoc, Any, Any] = (
+            yattag.Doc().tagtext()
         )  # type gotten from yattag source
         doc, tag, text = doc_tuple
         doc.asis("<!DOCTYPE html>")

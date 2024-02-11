@@ -18,6 +18,16 @@ jobs:
 
       - name: Install Python dependencies
         run: pip install -r requirements.txt
+      
+      - name: Assert Types
+        run: |
+          OUTPUT=$(mypy ./lambda_function/src/main.py)
+          if [ -n "$(echo $OUTPUT | grep 'Success')" ]; then
+            echo "mypy type check passed"
+          else
+            echo "mypy type check failed"
+            exit 1
+          fi
 
       - name: Run tests
         run: python -m unittest discover
@@ -35,8 +45,8 @@ jobs:
         with:
           python-version: 3.12
 
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt
+      # - name: Install Python dependencies
+      #   run: pip install -r requirements.txt
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -50,8 +60,7 @@ jobs:
         run: serverless plugin install -n serverless-python-requirements
 
       - name: Deploy to AWS Lambda
-        run: |
-          serverless deploy
+        run: serverless deploy
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

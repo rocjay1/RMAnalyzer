@@ -15,6 +15,7 @@ from unittest.mock import patch
 import boto3
 from botocore import exceptions
 from moto import mock_aws
+import urllib.parse
 from lambda_function.src.main import *
 
 
@@ -126,8 +127,10 @@ class TestParseDateFromFilename(unittest.TestCase):
         self.assertEqual(parse_date_from_filename(f2), expected_date)
 
     def test_parse_date_from_filename_bad_filename(self):
-        f = "expenses_2021-12.csv"
-        self.assertEqual(parse_date_from_filename(f), date.today())
+        f = "2024-01-27T15 28 02.960Z-transactions.csv"
+        encoded_f = urllib.parse.quote_plus(f)
+        expected_date = date(2024, 1, 27)
+        self.assertEqual(parse_date_from_filename(encoded_f), expected_date)
 
 
 # Test the Transaction class constructor
@@ -413,7 +416,7 @@ class TestCalculate2PersonDifference(unittest.TestCase):
 2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,Shared Purchases,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,"""
         self.config = CONFIG
-        self.date = datetime(2023, 9, 1)
+        self.date = date(2023, 9, 1)
 
     def test_calculate_2_person_difference(self):
         summary = SpreadsheetSummary(self.date, self.file_content, config=self.config)
@@ -430,7 +433,7 @@ class TestSpreadsheetSummaryConstructor(unittest.TestCase):
 2023-09-02,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,Shared Purchases,,,
 2023-09-14,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,"""
         self.config = CONFIG
-        self.date = datetime(2023, 9, 1)
+        self.date = date(2023, 9, 1)
 
     def test_spreadsheet_summary_constructor(self):
         summary = SpreadsheetSummary(
@@ -504,7 +507,7 @@ class TestParse(unittest.TestCase):
 class TestGenerateEmailData(unittest.TestCase):
     def setUp(self):
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
-2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,R & T Shared,,,"""
+2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,17,MADCATS DANCE,Shared Purchases,,,"""
         self.config = CONFIG
 
     def test_generate_email_data(self):
@@ -516,7 +519,7 @@ class TestGenerateEmailData(unittest.TestCase):
         self.assertEqual(result[1], [p.email for p in summary.people])
         self.assertEqual(
             result[2],
-            f"Monthly Summary - {summary.date.strftime(DISPLAY_DATE_FORMAT)}",
+            "Transactions Summary: 08/31/23 - 08/31/23",
         )
         # We've tested the other functions, so just test that the html starts and ends with the correct strings
         self.assertTrue(result[3].startswith("<!DOCTYPE html>"))

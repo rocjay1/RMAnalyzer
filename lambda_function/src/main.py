@@ -12,6 +12,7 @@ from enum import Enum
 import json
 import re
 from typing import Any
+import urllib.parse
 from typeguard import typechecked
 import boto3
 from mypy_boto3_s3.client import S3Client
@@ -102,8 +103,11 @@ def parse_date_from_filename(filename: str) -> date:
     """
     Parses a date string from a given filename using a regular expression.
     """
+    # decode filename if URL encoded
+    decoded_name: str = urllib.parse.unquote_plus(filename)
+
     date_regex: re.Pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
-    search_results: re.Match[str] | None = date_regex.search(filename)
+    search_results: re.Match[str] | None = date_regex.search(decoded_name)
     if search_results:
         return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
     return date.today()
@@ -238,6 +242,8 @@ class Summary:
             raise
 
         self.date = summary_date
+        self.start_date = date.max
+        self.end_date = date.min
         self.owner = owner
         self.people = self.initialize_people(people_config)
 
@@ -275,8 +281,12 @@ class Summary:
             if (
                 transaction.account_number in person.account_numbers
                 and transaction.ignore == IgnoredFrom.NOTHING
-                and transaction.date.month == self.date.month
+                # and transaction.date.month == self.date.month
             ):
+                if transaction.date < self.start_date:
+                    self.start_date = transaction.date
+                if transaction.date > self.end_date:
+                    self.end_date = transaction.date
                 person.add_transaction(transaction)
 
     def add_transactions(self, parsed_transactions: list[Transaction]) -> None:
@@ -371,7 +381,7 @@ class Summary:
         return (
             self.owner,
             [p.email for p in self.people],
-            f"Monthly Summary - {self.date.strftime(DISPLAY_DATE_FORMAT)}",
+            f"Transactions Summary: {self.start_date.strftime(DISPLAY_DATE_FORMAT)} - {self.end_date.strftime(DISPLAY_DATE_FORMAT)}",
             doc.getvalue(),
         )
 

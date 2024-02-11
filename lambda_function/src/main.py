@@ -11,7 +11,8 @@ import csv
 from enum import Enum
 import json
 import re
-from typing import Optional, Dict, List, Tuple, Any
+from typing import Any
+from typeguard import typechecked
 import boto3
 from mypy_boto3_s3.client import S3Client
 from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
@@ -29,10 +30,11 @@ logger: logging.Logger = logging.getLogger(__name__)
 DATE_FORMAT: str = "%Y-%m-%d"
 DISPLAY_DATE_FORMAT: str = "%m/%d/%y"
 MONEY_FORMAT: str = "{0:.2f}"
-CONFIG_DICT: Dict = {"bucket": "rmanalyzer-config", "key": "config.json"}
+CONFIG_DICT: dict = {"bucket": "rmanalyzer-config", "key": "config.json"}
 
 
 # HELPER FUNCTIONS
+@typechecked
 def format_money_helper(num: float) -> str:
     """
     Formats a given number as a string in the format specified by the MONEY_FORMAT constant.
@@ -40,7 +42,8 @@ def format_money_helper(num: float) -> str:
     return MONEY_FORMAT.format(num)
 
 
-def load_config(config_dict: Optional[Dict] = None) -> Dict:
+@typechecked
+def load_config(config_dict: dict | None = None) -> dict:
     """
     Load configuration from a JSON file.
     """
@@ -69,10 +72,10 @@ def read_s3_file(bucket: str, key: str) -> str:
 
 def send_email(
     source: str,
-    to_addresses: List[str],
+    to_addresses: list[str],
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
+    text_body: str | None = None,
 ) -> SendEmailResponseTypeDef:
     """
     Sends an email using Amazon SES (Simple Email Service).
@@ -95,12 +98,13 @@ def send_email(
         raise
 
 
+@typechecked
 def parse_date_from_filename(filename: str) -> date:
     """
     Parses a date string from a given filename using a regular expression.
     """
     date_regex: re.Pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
-    search_results: Optional[re.Match[str]] = date_regex.search(filename)
+    search_results: re.Match[str] | None = date_regex.search(filename)
     if search_results:
         return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
     return date.today()
@@ -131,6 +135,7 @@ class IgnoredFrom(Enum):
     NOTHING = str()
 
 
+@typechecked
 class Transaction:
     """
     Represents a financial transaction.
@@ -153,7 +158,7 @@ class Transaction:
         self.ignore = ignore
 
     @staticmethod
-    def from_row(row: Dict) -> Optional[Transaction]:
+    def from_row(row: dict) -> Transaction | None:
         """
         Creates a Transaction object from a row in a spreadsheet.
         """
@@ -179,6 +184,7 @@ class Transaction:
             return None
 
 
+@typechecked
 class Person:
     """
     A class representing a person with a name, email, account numbers, and transactions.
@@ -188,8 +194,8 @@ class Person:
         self,
         name: str,
         email: str,
-        account_numbers: List[int],
-        transactions: Optional[List[Transaction]] = None,
+        account_numbers: list[int],
+        transactions: list[Transaction] | None = None,
     ) -> None:
         self.name = name
         self.email = email
@@ -202,7 +208,7 @@ class Person:
         """
         self.transactions.append(transaction)
 
-    def calculate_expenses(self, category: Optional[Category] = None) -> float:
+    def calculate_expenses(self, category: Category | None = None) -> float:
         """
         Calculates the total expenses for the given category or for all
         categories if no category is specified.
@@ -216,26 +222,28 @@ class Person:
             return sum(t.amount for t in self.transactions if t.category == category)
 
 
+@typechecked
 class Summary:
     """
     A class representing a summary of transaction data for a given date.
     """
 
-    def __init__(self, summary_date: date, config: Optional[Dict] = None) -> None:
+    def __init__(self, summary_date: date, config: dict | None = None) -> None:
         if not config:
             config = load_config()
-        self.date = summary_date
 
         try:
-            self.owner: str = config["OwnerEmail"]
-            people_config: List[Dict] = config["People"]
+            owner: str = config["OwnerEmail"]
+            people_config: list[dict] = config["People"]
         except KeyError:
             logger.error("Invalid or missing key in configuration.")
             raise
 
+        self.date = summary_date
+        self.owner = owner
         self.people = self.initialize_people(people_config)
 
-    def initialize_people(self, people_config: List[Dict]) -> List[Person]:
+    def initialize_people(self, people_config: list[dict]) -> list[Person]:
         """
         Initializes a list of Person objects based on the provided people configuration.
         """
@@ -257,15 +265,15 @@ class Summary:
         """
         Parses transaction data from a spreadsheet and adds it to the analyzer.
         """
-        parsed_spreadsheet: Optional[List[Transaction]] = SpreadsheetParser.parse(
+        parsed_spreadsheet: list[Transaction] | None = SpreadsheetParser.parse(
             spreadsheet_content
         )
         if parsed_spreadsheet:
-            parsed_transactions: List[Transaction] = parsed_spreadsheet
+            parsed_transactions: list[Transaction] = parsed_spreadsheet
             self.add_transactions(parsed_transactions)
 
     def add_persons_transactions(
-        self, parsed_transactions: List[Transaction], person: Person
+        self, parsed_transactions: list[Transaction], person: Person
     ) -> None:
         """
         Adds a list of parsed transactions to a given person's account.
@@ -278,7 +286,7 @@ class Summary:
             ):
                 person.add_transaction(transaction)
 
-    def add_transactions(self, parsed_transactions: List[Transaction]) -> None:
+    def add_transactions(self, parsed_transactions: list[Transaction]) -> None:
         """
         Adds parsed transactions to each person's transaction history.
         """
@@ -286,7 +294,7 @@ class Summary:
             self.add_persons_transactions(parsed_transactions, person)
 
     def calculate_2_person_difference(
-        self, person1: Person, person2: Person, category: Optional[Category] = None
+        self, person1: Person, person2: Person, category: Category | None = None
     ) -> float:
         """
         Calculates the difference in expenses between two people for a given category.
@@ -295,11 +303,11 @@ class Summary:
             category
         )
 
-    def generate_email_data(self) -> Tuple[str, List[str], str, str]:
+    def generate_email_data(self) -> tuple[str, list[str], str, str]:
         """
         Generates email data for the monthly summary report.
         """
-        doc_tuple: Tuple[SimpleDoc, Any, Any] = Doc().tagtext()
+        doc_tuple: tuple[SimpleDoc, Any, Any] = Doc().tagtext()
         doc, tag, text = doc_tuple
         doc.asis("<!DOCTYPE html>")
         with tag("html"):
@@ -373,6 +381,7 @@ class Summary:
         )
 
 
+@typechecked
 class SpreadsheetSummary(Summary):
     """
     A class representing a summary of transactions from a spreadsheet.
@@ -382,32 +391,34 @@ class SpreadsheetSummary(Summary):
         self,
         summary_date: date,
         spreadsheet_content: str,
-        config: Optional[Dict] = None,
+        config: dict | None = None,
     ) -> None:
         super().__init__(summary_date, config)
         super().add_transactions_from_spreadsheet(spreadsheet_content)
 
 
+@typechecked
 class SpreadsheetParser:
     """
     A class for parsing CSV files and returning a list of Transaction objects.
     """
 
     @staticmethod
-    def parse(file_content: str) -> Optional[List[Transaction]]:
+    def parse(file_content: str) -> list[Transaction] | None:
         """
         Parses a CSV file and returns a list of Transaction objects.
         """
-        results: List[Transaction] = []
+        results: list[Transaction] = []
         reader: csv.DictReader = csv.DictReader(file_content.splitlines())
         for row in reader:
-            transaction: Optional[Transaction] = Transaction.from_row(row)
+            transaction: Transaction | None = Transaction.from_row(row)
             if transaction:
                 results.append(transaction)
         return results
 
 
 # MAIN
+@typechecked
 def analyze_s3_sheet(bucket: str, key: str) -> None:
     """
     Analyzes a file located at the given S3 file path, generates a summary of its contents,
@@ -416,11 +427,12 @@ def analyze_s3_sheet(bucket: str, key: str) -> None:
     file_content: str = read_s3_file(bucket, key)
     summary_date: date = parse_date_from_filename(key)
     summary: SpreadsheetSummary = SpreadsheetSummary(summary_date, file_content)
-    email_data: Tuple[str, List[str], str, str] = summary.generate_email_data()
+    email_data: tuple[str, list[str], str, str] = summary.generate_email_data()
     source, to_addresses, subject, html_body = email_data
     send_email(source, to_addresses, subject, html_body)
 
 
+@typechecked
 def lambda_handler(event: Any, context: Any) -> None:
     """
     This function is the entry point for the AWS Lambda function. It is triggered by an S3 event

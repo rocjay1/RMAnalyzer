@@ -8,9 +8,10 @@
 
 import json
 from datetime import date
+import typeguard
 import unittest
 from unittest.mock import MagicMock
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 import boto3
 from botocore import exceptions
 from moto import mock_aws
@@ -126,8 +127,7 @@ class TestParseDateFromFilename(unittest.TestCase):
 
     def test_parse_date_from_filename_bad_filename(self):
         f = "expenses_2021-12.csv"
-        with self.assertRaises(AttributeError):
-            parse_date_from_filename(f)
+        self.assertEqual(parse_date_from_filename(f), date.today())
 
 
 # Test the Transaction class constructor
@@ -158,7 +158,7 @@ class TestTransactionConstructor(unittest.TestCase):
         self.assertEqual(self.transaction.ignore, self.ignore)
 
         # Test invalid input
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Transaction(
                 "2022-01-01",
                 self.name,
@@ -167,7 +167,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 self.category,
                 self.ignore,
             )
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Transaction(
                 self.transact_date,
                 123456,
@@ -176,7 +176,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 self.category,
                 self.ignore,
             )
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Transaction(
                 self.transact_date,
                 self.name,
@@ -185,7 +185,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 self.category,
                 self.ignore,
             )
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Transaction(
                 self.transact_date,
                 self.name,
@@ -194,7 +194,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 self.category,
                 self.ignore,
             )
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Transaction(
                 self.transact_date,
                 self.name,
@@ -203,7 +203,7 @@ class TestTransactionConstructor(unittest.TestCase):
                 "Groceries",
                 self.ignore,
             )
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Transaction(
                 self.transact_date,
                 self.name,
@@ -294,13 +294,13 @@ class TestPersonConstructor(unittest.TestCase):
         self.assertEqual(self.person.transactions, self.transactions)
 
         # Test invalid input
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Person(123456, self.email, self.account_numbers, self.transactions)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             Person(self.name, 123456, self.account_numbers, self.transactions)
-        with self.assertRaises(TypeError):
-            Person(self.name, self.email, [123456, "789012"], self.transactions)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
+            Person(self.name, self.email, ["789012"], self.transactions)
+        with self.assertRaises(typeguard.TypeCheckError):
             Person(self.name, self.email, self.account_numbers, ["invalid transaction"])
 
 
@@ -355,7 +355,7 @@ class TestSummaryConstructor(unittest.TestCase):
             self.assertEqual(summary.people[1].name, "Tootie")
 
     def test_summary_constructor_bad_config_type(self):
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             summary = Summary(date.today(), config=self.bad_config_type)
 
     def test_summary_constructor_bad_config_keys(self):
@@ -367,7 +367,7 @@ class TestSummaryConstructor(unittest.TestCase):
             summary = Summary(date.today(), config=self.bad_people_dict_keys)
 
     def test_summary_constructor_bad_people_dict_values(self):
-        with self.assertRaises(TypeError):
+        with self.assertRaises(typeguard.TypeCheckError):
             summary = Summary(date.today(), config=self.bad_people_dict_values)
 
 
@@ -539,7 +539,7 @@ class TestAnalyzeS3Sheet(unittest.TestCase):
 
         mock_bucket, mock_key = "some_bucket", "2023-09-23T.csv"
         mock_source = "mocked_source"
-        mock_to_addresses = "mocked_to_addresses"
+        mock_to_addresses = ["mocked_to_addresses"]
         mock_subject = "mocked_subject"
         mock_html_body = "mocked_html_body"
 

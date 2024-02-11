@@ -12,6 +12,7 @@ from enum import Enum
 import json
 import re
 from typing import Any
+import urllib.parse
 from typeguard import typechecked
 import boto3
 from mypy_boto3_s3.client import S3Client
@@ -19,7 +20,7 @@ from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
 from mypy_boto3_ses.client import SESClient
 from mypy_boto3_ses.type_defs import SendEmailResponseTypeDef
 from botocore import exceptions
-from yattag import Doc, SimpleDoc
+import yattag
 
 
 logging.basicConfig(level=logging.INFO)
@@ -50,8 +51,7 @@ def load_config(config_dict: dict | None = None) -> dict:
     if config_dict is None:
         config_dict = CONFIG_DICT
     try:
-        config: str = read_s3_file(config_dict["bucket"], config_dict["key"])
-        return json.loads(config)
+        return json.loads(read_s3_file(config_dict["bucket"], config_dict["key"]))
     except json.JSONDecodeError as ex:
         logger.error("Error loading config: %s", ex)
         raise
@@ -103,8 +103,11 @@ def parse_date_from_filename(filename: str) -> date:
     """
     Parses a date string from a given filename using a regular expression.
     """
+    # decode filename if URL encoded
+    decoded_name: str = urllib.parse.unquote_plus(filename)
+
     date_regex: re.Pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
-    search_results: re.Match[str] | None = date_regex.search(filename)
+    search_results: re.Match[str] | None = date_regex.search(decoded_name)
     if search_results:
         return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
     return date.today()
@@ -195,12 +198,12 @@ class Person:
         name: str,
         email: str,
         account_numbers: list[int],
-        transactions: list[Transaction] | None = None,
+        transactions: list[Transaction],
     ) -> None:
         self.name = name
         self.email = email
         self.account_numbers = account_numbers
-        self.transactions = transactions or []
+        self.transactions = transactions
 
     def add_transaction(self, transaction: Transaction) -> None:
         """
@@ -216,10 +219,9 @@ class Person:
 
         if not self.transactions:
             return 0
-        elif not category:
+        if not category:
             return sum(t.amount for t in self.transactions)
-        else:
-            return sum(t.amount for t in self.transactions if t.category == category)
+        return sum(t.amount for t in self.transactions if t.category == category)
 
 
 @typechecked
@@ -240,6 +242,8 @@ class Summary:
             raise
 
         self.date = summary_date
+        self.start_date = date.max
+        self.end_date = date.min
         self.owner = owner
         self.people = self.initialize_people(people_config)
 
@@ -265,12 +269,7 @@ class Summary:
         """
         Parses transaction data from a spreadsheet and adds it to the analyzer.
         """
-        parsed_spreadsheet: list[Transaction] | None = SpreadsheetParser.parse(
-            spreadsheet_content
-        )
-        if parsed_spreadsheet:
-            parsed_transactions: list[Transaction] = parsed_spreadsheet
-            self.add_transactions(parsed_transactions)
+        self.add_transactions(SpreadsheetParser.parse(spreadsheet_content))
 
     def add_persons_transactions(
         self, parsed_transactions: list[Transaction], person: Person
@@ -282,8 +281,12 @@ class Summary:
             if (
                 transaction.account_number in person.account_numbers
                 and transaction.ignore == IgnoredFrom.NOTHING
-                and transaction.date.month == self.date.month
+                # and transaction.date.month == self.date.month
             ):
+                if transaction.date < self.start_date:
+                    self.start_date = transaction.date
+                if transaction.date > self.end_date:
+                    self.end_date = transaction.date
                 person.add_transaction(transaction)
 
     def add_transactions(self, parsed_transactions: list[Transaction]) -> None:
@@ -307,7 +310,9 @@ class Summary:
         """
         Generates email data for the monthly summary report.
         """
-        doc_tuple: tuple[SimpleDoc, Any, Any] = Doc().tagtext()
+        doc_tuple: tuple[yattag.SimpleDoc, Any, Any] = (
+            yattag.Doc().tagtext()
+        )  # type gotten from yattag source
         doc, tag, text = doc_tuple
         doc.asis("<!DOCTYPE html>")
         with tag("html"):
@@ -376,7 +381,7 @@ class Summary:
         return (
             self.owner,
             [p.email for p in self.people],
-            f"Monthly Summary - {self.date.strftime(DISPLAY_DATE_FORMAT)}",
+            f"Transactions Summary: {self.start_date.strftime(DISPLAY_DATE_FORMAT)} - {self.end_date.strftime(DISPLAY_DATE_FORMAT)}",
             doc.getvalue(),
         )
 
@@ -404,7 +409,7 @@ class SpreadsheetParser:
     """
 
     @staticmethod
-    def parse(file_content: str) -> list[Transaction] | None:
+    def parse(file_content: str) -> list[Transaction]:
         """
         Parses a CSV file and returns a list of Transaction objects.
         """

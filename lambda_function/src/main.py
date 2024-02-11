@@ -4,71 +4,84 @@ This script is used to generate a monthly summary of expenses from a spreadsheet
 Author: Rocco Davino
 """
 
+from __future__ import annotations
 import logging
 from datetime import datetime, date
 import csv
 from enum import Enum
 import json
 import re
+from typing import Optional, Dict, List, Tuple, Any
 import boto3
+from mypy_boto3_s3.client import S3Client
+from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
+from mypy_boto3_ses.client import SESClient
+from mypy_boto3_ses.type_defs import SendEmailResponseTypeDef
 from botocore import exceptions
-from yattag import Doc
+from yattag import Doc, SimpleDoc
+
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 # CONSTANTS
-DATE_FORMAT = "%Y-%m-%d"
-DISPLAY_DATE_FORMAT = "%m/%d/%y"
-MONEY_FORMAT = "{0:.2f}"
-CONFIG_DICT = {"bucket": "rmanalyzer-config", "key": "config.json"}
+DATE_FORMAT: str = "%Y-%m-%d"
+DISPLAY_DATE_FORMAT: str = "%m/%d/%y"
+MONEY_FORMAT: str = "{0:.2f}"
+CONFIG_DICT: Dict = {"bucket": "rmanalyzer-config", "key": "config.json"}
 
 
 # HELPER FUNCTIONS
-def format_money_helper(num):
+def format_money_helper(num: float) -> str:
     """
     Formats a given number as a string in the format specified by the MONEY_FORMAT constant.
     """
     return MONEY_FORMAT.format(num)
 
 
-def load_config(config_dict=None):
+def load_config(config_dict: Optional[Dict] = None) -> Dict:
     """
     Load configuration from a JSON file.
     """
     if config_dict is None:
         config_dict = CONFIG_DICT
     try:
-        config = read_s3_file(config_dict["bucket"], config_dict["key"])
+        config: str = read_s3_file(config_dict["bucket"], config_dict["key"])
         return json.loads(config)
     except json.JSONDecodeError as ex:
         logger.error("Error loading config: %s", ex)
         raise
 
 
-def read_s3_file(bucket, key):
+def read_s3_file(bucket: str, key: str) -> str:
     """
     Reads a file from an S3 bucket.
     """
-    s3 = boto3.client("s3")
+    s3: S3Client = boto3.client("s3")
     try:
-        response = s3.get_object(Bucket=bucket, Key=key)
+        response: GetObjectOutputTypeDef = s3.get_object(Bucket=bucket, Key=key)
         return response["Body"].read().decode("utf-8")
     except exceptions.ClientError as ex:
         logger.error("Error reading S3 file: %s", ex)
         raise
 
 
-def send_email(source, to_addresses, subject, html_body, text_body=None):
+def send_email(
+    source: str,
+    to_addresses: List[str],
+    subject: str,
+    html_body: str,
+    text_body: Optional[str] = None,
+) -> SendEmailResponseTypeDef:
     """
     Sends an email using Amazon SES (Simple Email Service).
     """
-    ses = boto3.client("ses", region_name="us-east-1")
+    ses: SESClient = boto3.client("ses", region_name="us-east-1")
     if not text_body:
         text_body = html_body
     try:
-        response = ses.send_email(
+        response: SendEmailResponseTypeDef = ses.send_email(
             Source=source,
             Destination={"ToAddresses": to_addresses},
             Message={
@@ -82,18 +95,15 @@ def send_email(source, to_addresses, subject, html_body, text_body=None):
         raise
 
 
-def parse_date_from_filename(filename):
+def parse_date_from_filename(filename: str) -> date:
     """
     Parses a date string from a given filename using a regular expression.
     """
-    date_regex = re.compile(r"\d{4}-\d{2}-\d{2}")
-    try:
-        return datetime.strptime(
-            date_regex.search(filename).group(0), DATE_FORMAT
-        ).date()
-    except AttributeError as ex:
-        logger.error("Error parsing date from filename: %s", ex)
-        raise
+    date_regex: re.Pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
+    search_results: Optional[re.Match[str]] = date_regex.search(filename)
+    if search_results:
+        return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
+    return date.today()
 
 
 # CLASSES
@@ -126,44 +136,35 @@ class Transaction:
     Represents a financial transaction.
     """
 
-    def __init__(self, transact_date, name, account_number, amount, category, ignore):
-        try:
-            if not isinstance(transact_date, date):
-                raise TypeError("date should be a datetime.date object")
-            if not isinstance(name, str):
-                raise TypeError("name should be a string")
-            if not isinstance(account_number, int):
-                raise TypeError("account_number should be an integer")
-            if not isinstance(amount, float):
-                raise TypeError("amount should be a float")
-            if not isinstance(category, Category):
-                raise TypeError("category should be a Category object")
-            if not isinstance(ignore, IgnoredFrom):
-                raise TypeError("ignore should be a IgnoredFrom object")
-
-            self.date = transact_date
-            self.name = name
-            self.account_number = account_number
-            self.amount = amount
-            self.category = category
-            self.ignore = ignore
-        except TypeError as ex:
-            logger.error("Invalid transaction data: %s", ex)
-            raise
+    def __init__(
+        self,
+        transact_date: date,
+        name: str,
+        account_number: int,
+        amount: float,
+        category: Category,
+        ignore: IgnoredFrom,
+    ) -> None:
+        self.date = transact_date
+        self.name = name
+        self.account_number = account_number
+        self.amount = amount
+        self.category = category
+        self.ignore = ignore
 
     @staticmethod
-    def from_row(row):
+    def from_row(row: Dict) -> Optional[Transaction]:
         """
         Creates a Transaction object from a row in a spreadsheet.
         """
 
         try:
-            transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
-            transaction_name = row["Name"]
-            transaction_account_number = int(row["Account Number"])
-            transaction_amount = float(row["Amount"])
-            transaction_category = Category(row["Category"])
-            transaction_ignore = IgnoredFrom(row["Ignored From"])
+            transaction_date: date = datetime.strptime(row["Date"], DATE_FORMAT).date()
+            transaction_name: str = row["Name"]
+            transaction_account_number: int = int(row["Account Number"])
+            transaction_amount: float = float(row["Amount"])
+            transaction_category: Category = Category(row["Category"])
+            transaction_ignore: IgnoredFrom = IgnoredFrom(row["Ignored From"])
 
             return Transaction(
                 transaction_date,
@@ -183,41 +184,36 @@ class Person:
     A class representing a person with a name, email, account numbers, and transactions.
     """
 
-    def __init__(self, name, email, account_numbers, transactions=None):
-        try:
-            if not isinstance(name, str):
-                raise TypeError("name should be a string")
-            if not isinstance(email, str):
-                raise TypeError("email should be a string")
-            if not all(isinstance(num, int) for num in account_numbers):
-                raise TypeError("account_numbers should be a list of integers")
-            if transactions and not all(
-                isinstance(t, Transaction) for t in transactions
-            ):
-                raise TypeError("transactions should be a list of Transaction objects")
+    def __init__(
+        self,
+        name: str,
+        email: str,
+        account_numbers: List[int],
+        transactions: Optional[List[Transaction]] = None,
+    ) -> None:
+        self.name = name
+        self.email = email
+        self.account_numbers = account_numbers
+        self.transactions = transactions or []
 
-            self.name = name
-            self.email = email
-            self.account_numbers = account_numbers
-            self.transactions = transactions or []
-        except TypeError as ex:
-            logger.error("Invalid person data: %s", ex)
-            raise
-
-    def add_transaction(self, transaction):
+    def add_transaction(self, transaction: Transaction) -> None:
         """
         Adds a transaction to the list of transactions for this account.
         """
         self.transactions.append(transaction)
 
-    def calculate_expenses(self, category=None):
+    def calculate_expenses(self, category: Optional[Category] = None) -> float:
         """
         Calculates the total expenses for the given category or for all
         categories if no category is specified.
         """
-        if category:
+
+        if not self.transactions:
+            return 0
+        elif not category:
+            return sum(t.amount for t in self.transactions)
+        else:
             return sum(t.amount for t in self.transactions if t.category == category)
-        return sum(t.amount for t in self.transactions)
 
 
 class Summary:
@@ -225,25 +221,21 @@ class Summary:
     A class representing a summary of transaction data for a given date.
     """
 
-    def __init__(self, summary_date, config=None):
+    def __init__(self, summary_date: date, config: Optional[Dict] = None) -> None:
         if not config:
             config = load_config()
         self.date = summary_date
 
         try:
-            self.owner = config["OwnerEmail"]
-        except (KeyError, TypeError):
-            logger.error("Invalid or missing 'OwnerEmail' in configuration.")
+            self.owner: str = config["OwnerEmail"]
+            people_config: List[Dict] = config["People"]
+        except KeyError:
+            logger.error("Invalid or missing key in configuration.")
             raise
 
-        try:
-            people_config = config["People"]
-        except (KeyError, TypeError):
-            logger.error("Invalid or missing 'People' in configuration.")
-            raise
         self.people = self.initialize_people(people_config)
 
-    def initialize_people(self, people_config):
+    def initialize_people(self, people_config: List[Dict]) -> List[Person]:
         """
         Initializes a list of Person objects based on the provided people configuration.
         """
@@ -257,18 +249,24 @@ class Summary:
                 )
                 for p in people_config
             ]
-        except (TypeError, KeyError) as ex:
+        except KeyError as ex:
             logger.error("Invalid people configuration: %s", ex)
             raise
 
-    def add_transactions_from_spreadsheet(self, spreadsheet_content):
+    def add_transactions_from_spreadsheet(self, spreadsheet_content: str) -> None:
         """
         Parses transaction data from a spreadsheet and adds it to the analyzer.
         """
-        parsed_transactions = SpreadsheetParser.parse(spreadsheet_content)
-        self.add_transactions(parsed_transactions)
+        parsed_spreadsheet: Optional[List[Transaction]] = SpreadsheetParser.parse(
+            spreadsheet_content
+        )
+        if parsed_spreadsheet:
+            parsed_transactions: List[Transaction] = parsed_spreadsheet
+            self.add_transactions(parsed_transactions)
 
-    def add_persons_transactions(self, parsed_transactions, person):
+    def add_persons_transactions(
+        self, parsed_transactions: List[Transaction], person: Person
+    ) -> None:
         """
         Adds a list of parsed transactions to a given person's account.
         """
@@ -280,14 +278,16 @@ class Summary:
             ):
                 person.add_transaction(transaction)
 
-    def add_transactions(self, parsed_transactions):
+    def add_transactions(self, parsed_transactions: List[Transaction]) -> None:
         """
         Adds parsed transactions to each person's transaction history.
         """
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
-    def calculate_2_person_difference(self, person1, person2, category=None):
+    def calculate_2_person_difference(
+        self, person1: Person, person2: Person, category: Optional[Category] = None
+    ) -> float:
         """
         Calculates the difference in expenses between two people for a given category.
         """
@@ -295,12 +295,12 @@ class Summary:
             category
         )
 
-    def generate_email_data(self):
+    def generate_email_data(self) -> Tuple[str, List[str], str, str]:
         """
         Generates email data for the monthly summary report.
         """
-
-        doc, tag, text = Doc().tagtext()
+        doc_tuple: Tuple[SimpleDoc, Any, Any] = Doc().tagtext()
+        doc, tag, text = doc_tuple
         doc.asis("<!DOCTYPE html>")
         with tag("html"):
             # HTML head
@@ -378,7 +378,12 @@ class SpreadsheetSummary(Summary):
     A class representing a summary of transactions from a spreadsheet.
     """
 
-    def __init__(self, summary_date, spreadsheet_content, config=None):
+    def __init__(
+        self,
+        summary_date: date,
+        spreadsheet_content: str,
+        config: Optional[Dict] = None,
+    ) -> None:
         super().__init__(summary_date, config)
         super().add_transactions_from_spreadsheet(spreadsheet_content)
 
@@ -389,39 +394,40 @@ class SpreadsheetParser:
     """
 
     @staticmethod
-    def parse(file_content):
+    def parse(file_content: str) -> Optional[List[Transaction]]:
         """
         Parses a CSV file and returns a list of Transaction objects.
         """
-        results = []
-        reader = csv.DictReader(file_content.splitlines())
+        results: List[Transaction] = []
+        reader: csv.DictReader = csv.DictReader(file_content.splitlines())
         for row in reader:
-            transaction = Transaction.from_row(row)
+            transaction: Optional[Transaction] = Transaction.from_row(row)
             if transaction:
                 results.append(transaction)
         return results
 
 
 # MAIN
-def analyze_s3_sheet(bucket, key):
+def analyze_s3_sheet(bucket: str, key: str) -> None:
     """
     Analyzes a file located at the given S3 file path, generates a summary of its contents,
     and sends an email with the summary to a list of recipients.
     """
-    file_content = read_s3_file(bucket, key)
-    summary_date = parse_date_from_filename(key)
-    summary = SpreadsheetSummary(summary_date, file_content)
-    source, to_addresses, subject, html_body = summary.generate_email_data()
+    file_content: str = read_s3_file(bucket, key)
+    summary_date: date = parse_date_from_filename(key)
+    summary: SpreadsheetSummary = SpreadsheetSummary(summary_date, file_content)
+    email_data: Tuple[str, List[str], str, str] = summary.generate_email_data()
+    source, to_addresses, subject, html_body = email_data
     send_email(source, to_addresses, subject, html_body)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: Any, context: Any) -> None:
     """
     This function is the entry point for the AWS Lambda function. It is triggered by an S3 event
     and analyzes the file that triggered the event.
     """
-    bucket = event["Records"][0]["s3"]["bucket"]["name"]
-    key = event["Records"][0]["s3"]["object"]["key"]
+    bucket: str = event["Records"][0]["s3"]["bucket"]["name"]
+    key: str = event["Records"][0]["s3"]["object"]["key"]
     analyze_s3_sheet(bucket, key)
 
 

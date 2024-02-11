@@ -50,8 +50,7 @@ def load_config(config_dict: dict | None = None) -> dict:
     if config_dict is None:
         config_dict = CONFIG_DICT
     try:
-        config: str = read_s3_file(config_dict["bucket"], config_dict["key"])
-        return json.loads(config)
+        return json.loads(read_s3_file(config_dict["bucket"], config_dict["key"]))
     except json.JSONDecodeError as ex:
         logger.error("Error loading config: %s", ex)
         raise
@@ -195,12 +194,12 @@ class Person:
         name: str,
         email: str,
         account_numbers: list[int],
-        transactions: list[Transaction] | None = None,
+        transactions: list[Transaction],
     ) -> None:
         self.name = name
         self.email = email
         self.account_numbers = account_numbers
-        self.transactions = transactions or []
+        self.transactions = transactions
 
     def add_transaction(self, transaction: Transaction) -> None:
         """
@@ -216,10 +215,9 @@ class Person:
 
         if not self.transactions:
             return 0
-        elif not category:
+        if not category:
             return sum(t.amount for t in self.transactions)
-        else:
-            return sum(t.amount for t in self.transactions if t.category == category)
+        return sum(t.amount for t in self.transactions if t.category == category)
 
 
 @typechecked
@@ -265,12 +263,7 @@ class Summary:
         """
         Parses transaction data from a spreadsheet and adds it to the analyzer.
         """
-        parsed_spreadsheet: list[Transaction] | None = SpreadsheetParser.parse(
-            spreadsheet_content
-        )
-        if parsed_spreadsheet:
-            parsed_transactions: list[Transaction] = parsed_spreadsheet
-            self.add_transactions(parsed_transactions)
+        self.add_transactions(SpreadsheetParser.parse(spreadsheet_content))
 
     def add_persons_transactions(
         self, parsed_transactions: list[Transaction], person: Person
@@ -307,7 +300,9 @@ class Summary:
         """
         Generates email data for the monthly summary report.
         """
-        doc_tuple: tuple[SimpleDoc, Any, Any] = Doc().tagtext()
+        doc_tuple: tuple[SimpleDoc, Any, Any] = (
+            Doc().tagtext()
+        )  # type gotten from yattag source
         doc, tag, text = doc_tuple
         doc.asis("<!DOCTYPE html>")
         with tag("html"):
@@ -404,7 +399,7 @@ class SpreadsheetParser:
     """
 
     @staticmethod
-    def parse(file_content: str) -> list[Transaction] | None:
+    def parse(file_content: str) -> list[Transaction]:
         """
         Parses a CSV file and returns a list of Transaction objects.
         """

@@ -19,7 +19,7 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
       
-      - name: Assert Types
+      - name: Type check with mypy
         run: |
           OUTPUT=$(mypy ./lambda_function/src/main.py)
           if [ -n "$(echo $OUTPUT | grep 'Success')" ]; then

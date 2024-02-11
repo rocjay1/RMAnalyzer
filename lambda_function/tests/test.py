@@ -374,7 +374,7 @@ class TestSummaryConstructor(unittest.TestCase):
 # Test the calculate_expenses function
 class TestCalculateExpenses(unittest.TestCase):
     def setUp(self):
-        self.p1 = Person("George", "boygeorge@gmail.com", [1234, 4321])
+        self.p1 = Person("George", "boygeorge@gmail.com", [1234, 4321], [])
         self.p2 = Person(
             "Tootie",
             "tuttifruity@hotmail.com",

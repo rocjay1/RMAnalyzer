@@ -409,7 +409,7 @@ class TestCalculateExpenses(unittest.TestCase):
         self.assertEqual(self.p2.calculate_expenses(Category.PURCHASES), 34)
 
 
-# Make unit tests for calculate_2_person_difference
+# Make unit tests for calculate_difference
 class TestCalculate2PersonDifference(unittest.TestCase):
     def setUp(self):
         self.file_content = """Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
@@ -418,10 +418,10 @@ class TestCalculate2PersonDifference(unittest.TestCase):
         self.config = CONFIG
         self.date = date(2023, 9, 1)
 
-    def test_calculate_2_person_difference(self):
+    def test_calculate_difference(self):
         summary = SpreadsheetSummary(self.date, self.file_content, config=self.config)
         self.assertEqual(
-            summary.calculate_2_person_difference(summary.people[0], summary.people[1]),
+            summary.calculate_difference(summary.people[0], summary.people[1]),
             -4.34,
         )
 

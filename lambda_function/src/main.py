@@ -233,7 +233,6 @@ class Summary:
     def __init__(self, summary_date: date, config: dict | None = None) -> None:
         if not config:
             config = load_config()
-
         try:
             owner: str = config["OwnerEmail"]
             people_config: list[dict] = config["People"]
@@ -245,9 +244,9 @@ class Summary:
         self.start_date = date.max
         self.end_date = date.min
         self.owner = owner
-        self.people = self.initialize_people(people_config)
+        self.people = self.add_people(people_config)
 
-    def initialize_people(self, people_config: list[dict]) -> list[Person]:
+    def add_people(self, people_config: list[dict]) -> list[Person]:
         """
         Initializes a list of Person objects based on the provided people configuration.
         """
@@ -296,7 +295,7 @@ class Summary:
         for person in self.people:
             self.add_persons_transactions(parsed_transactions, person)
 
-    def calculate_2_person_difference(
+    def calculate_difference(
         self, person1: Person, person2: Person, category: Category | None = None
     ) -> float:
         """
@@ -365,7 +364,7 @@ class Summary:
                                     with tag("td"):
                                         text(
                                             format_money_helper(
-                                                self.calculate_2_person_difference(
+                                                self.calculate_difference(
                                                     person1, person2, category
                                                 )
                                             )
@@ -373,9 +372,7 @@ class Summary:
                                 with tag("td"):
                                     text(
                                         format_money_helper(
-                                            self.calculate_2_person_difference(
-                                                person1, person2
-                                            )
+                                            self.calculate_difference(person1, person2)
                                         )
                                     )
         return (

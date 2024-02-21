@@ -31,7 +31,7 @@ CONFIG_BUCKET, CONFIG_KEY = "rmanalyzer-config", "config.json"
 
 
 # Functions
-def read_s3_file(bucket: str, key: str) -> str:
+def get_s3_content(bucket: str, key: str) -> str:
     s3: S3Client = boto3.client("s3")
     try:
         response: GetObjectOutputTypeDef = s3.get_object(Bucket=bucket, Key=key)
@@ -42,7 +42,7 @@ def read_s3_file(bucket: str, key: str) -> str:
 
 
 def get_config(bucket: str, key: str) -> dict:
-    config = read_s3_file(bucket, key)
+    config = get_s3_content(bucket, key)
     try:
         return json.loads(config)
     except json.JSONDecodeError as ex:
@@ -51,6 +51,7 @@ def get_config(bucket: str, key: str) -> dict:
 
 
 def validate_config(config: dict) -> None:
+    # So far, only checks for non-empty dict values
     try:
         people: list[dict] = config["People"]
         for p in people:
@@ -66,8 +67,8 @@ def validate_config(config: dict) -> None:
 
 def to_transaction(row: dict) -> Transaction | None:
     try:
-        transaction_date: date = datetime.strptime(row["Date"], DATE_FORMAT).date()
-        transaction_name: str = row["Name"]
+        transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
+        transaction_name = row["Name"]
         transaction_account_number = int(row["Account Number"])
         transaction_amount = float(row["Amount"])
         transaction_category = Category(row["Category"])
@@ -86,10 +87,9 @@ def to_transaction(row: dict) -> Transaction | None:
 
 
 def get_transactions(bucket: str, key: str) -> list[Transaction]:
-    content = read_s3_file(bucket, key)
-    # DictReader is essentially a list of dicts representing rows
+    content = get_s3_content(bucket, key)
     rows = csv.DictReader(content.splitlines())
-    transactions: list[Transaction] = list()
+    transactions = list()
     for row in rows:
         transaction = to_transaction(row)
         if transaction:
@@ -104,8 +104,7 @@ def to_currency(num: float) -> str:
 def get_date(name: str) -> date:
     # decode filename if URL encoded
     decoded_name = urllib.parse.unquote_plus(name)
-    date_regex: re.Pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
-    search_results = date_regex.search(decoded_name)
+    search_results = re.compile(r"\d{4}-\d{2}-\d{2}").search(decoded_name)
     if search_results:
         return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
     return date.today()
@@ -200,8 +199,6 @@ class Group:
                     and t.ignore == IgnoredFrom.NOTHING
                 ):
                     p.add_transaction(t)
-                    continue
-            logger.warning("Skipped transaction: %s on %s", t.name, t.date)
 
     def get_oldest_transaction(self) -> date:
         return min(p.get_oldest_transaction() for p in self.members)
@@ -212,12 +209,14 @@ class Group:
     def get_expenses_difference(
         self, p1: Person, p2: Person, category: Category | None = None
     ) -> float:
-        if not [p for p in [p1, p2] if p in self.members]:
-            logger.error(
-                "%s and %s are not both in the list of people", p1.name, p2.name
-            )
+        try:
+            missing = [p for p in [p1, p2] if p not in self.members]
+            if missing:
+                raise ValueError("People args missing from group")
+            return p1.get_expenses(category) - p2.get_expenses(category)
+        except ValueError as ex:
+            logger.error("Invalid input (%s, %s): %s", p1.name, p2.name, ex)
             raise
-        return p1.get_expenses(category) - p2.get_expenses(category)
 
 
 class SummaryEmail:
@@ -240,16 +239,16 @@ class SummaryEmail:
                 )
             # HTML body
             with tag("body"):
-                # Body consists of a table
+                # Table
                 with tag("table", border="1"):
                     # Table header
                     with tag("thead"):
                         with tag("tr"):
                             with tag("th"):
                                 text("")
-                            for category in Category:
+                            for c in Category:
                                 with tag("th"):
-                                    text(category.value)
+                                    text(c.value)
                             with tag("th"):
                                 text("Total")
                     # Table body
@@ -312,9 +311,9 @@ def lambda_handler(event: Any, context: Any) -> None:
     key: str = event["Records"][0]["s3"]["object"]["key"]
 
     # Read data from buckets
-    transactions = get_transactions(bucket, key)
     config = get_config(CONFIG_BUCKET, CONFIG_KEY)
     validate_config(config)
+    transactions = get_transactions(bucket, key)
 
     # Construct group and add transactions
     members = get_members(config["People"])

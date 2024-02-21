@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 # Constants
-DATE_FORMAT = "%Y-%m-%d"
-DISPLAY_DATE_FORMAT = "%m/%d/%y"
+DATE = "%Y-%m-%d"
+DISPLAY_DATE = "%m/%d/%y"
 MONEY_FORMAT = "{0:.2f}"
 CONFIG_BUCKET, CONFIG_KEY = "rmanalyzer-config", "config.json"
 
@@ -67,7 +67,7 @@ def validate_config(config: dict) -> None:
 
 def to_transaction(row: dict) -> Transaction | None:
     try:
-        transaction_date = datetime.strptime(row["Date"], DATE_FORMAT).date()
+        transaction_date = datetime.strptime(row["Date"], DATE).date()
         transaction_name = row["Name"]
         transaction_account_number = int(row["Account Number"])
         transaction_amount = float(row["Amount"])
@@ -106,7 +106,7 @@ def get_date(name: str) -> date:
     decoded_name = urllib.parse.unquote_plus(name)
     search_results = re.compile(r"\d{4}-\d{2}-\d{2}").search(decoded_name)
     if search_results:
-        return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
+        return datetime.strptime(search_results.group(0), DATE).date()
     return date.today()
 
 
@@ -287,7 +287,7 @@ class SummaryEmail:
     def add_subject(self, group: Group) -> None:
         min_date = group.get_oldest_transaction
         max_date = group.get_newest_transaction
-        self.subject = f"Transactions Summary: {min_date.strftime(DISPLAY_DATE_FORMAT)} - {max_date.strftime(DISPLAY_DATE_FORMAT)}"
+        self.subject = f"Transactions Summary: {min_date.strftime(DISPLAY_DATE)} - {max_date.strftime(DISPLAY_DATE)}"
 
     def send(self) -> None:
         ses: SESClient = boto3.client("ses", region_name="us-east-1")

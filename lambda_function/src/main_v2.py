@@ -14,7 +14,6 @@ import boto3
 from mypy_boto3_s3.client import S3Client
 from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
 from mypy_boto3_ses.client import SESClient
-from mypy_boto3_ses.type_defs import SendEmailResponseTypeDef
 from botocore import exceptions
 import yattag
 
@@ -42,12 +41,26 @@ def read_s3_file(bucket: str, key: str) -> str:
         raise
 
 
-def get_config_json(bucket: str, key: str) -> dict:
+def get_config(bucket: str, key: str) -> dict:
     config = read_s3_file(bucket, key)
     try:
         return json.loads(config)
     except json.JSONDecodeError as ex:
         logger.error("Error loading config: %s", ex)
+        raise
+
+
+def validate_config(config: dict) -> None:
+    try:
+        people: list[dict] = config["People"]
+        for p in people:
+            if not (p["Name"] and p["Email"] and p["Accounts"]):
+                raise ValueError("Invalid people values")
+        owner: str = config["Owner"]
+        if not owner:
+            raise ValueError("Invalid owner value")
+    except (KeyError, ValueError) as ex:
+        logger.error("Invalid configuration: %s", ex)
         raise
 
 
@@ -59,7 +72,6 @@ def to_transaction(row: dict) -> Transaction | None:
         transaction_amount = float(row["Amount"])
         transaction_category = Category(row["Category"])
         transaction_ignore = IgnoredFrom(row["Ignored From"])
-
         return Transaction(
             transaction_date,
             transaction_name,
@@ -83,6 +95,32 @@ def get_transactions(bucket: str, key: str) -> list[Transaction]:
         if transaction:
             transactions.append(transaction)
     return transactions
+
+
+def to_currency(num: float) -> str:
+    return MONEY_FORMAT.format(num)
+
+
+def get_date(name: str) -> date:
+    # decode filename if URL encoded
+    decoded_name = urllib.parse.unquote_plus(name)
+    date_regex: re.Pattern = re.compile(r"\d{4}-\d{2}-\d{2}")
+    search_results = date_regex.search(decoded_name)
+    if search_results:
+        return datetime.strptime(search_results.group(0), DATE_FORMAT).date()
+    return date.today()
+
+
+def get_members(people_config: list[dict]) -> list[Person]:
+    return [
+        Person(
+            p["Name"],
+            p["Email"],
+            p["Accounts"],
+            list(),
+        )
+        for p in people_config
+    ]
 
 
 # Classes
@@ -142,7 +180,7 @@ class Person:
     def get_newest_transaction(self) -> date:
         return max(t.date for t in self.transactions)
 
-    def calculate_expenses(self, category: Category | None = None) -> float:
+    def get_expenses(self, category: Category | None = None) -> float:
         if not self.transactions:
             return 0
         if not category:
@@ -150,41 +188,141 @@ class Person:
         return sum(t.amount for t in self.transactions if t.category == category)
 
 
-class People:
-    def __init__(self, people: list[Person]) -> None:
-        self.people = people
+class Group:
+    def __init__(self, members: list[Person]) -> None:
+        self.members = members
 
     def add_transactions(self, transactions: list[Transaction]) -> None:
         for t in transactions:
-            skipped = True
-            for p in self.people:
+            for p in self.members:
                 if (
                     t.account_number in p.account_numbers
                     and t.ignore == IgnoredFrom.NOTHING
                 ):
                     p.add_transaction(t)
-                    skipped = False
-
-            if skipped:
-                logger.warning("Skipped transaction: %s on %s", t.name, t.date)
+                    continue
+            logger.warning("Skipped transaction: %s on %s", t.name, t.date)
 
     def get_oldest_transaction(self) -> date:
-        return min(p.get_oldest_transaction() for p in self.people)
+        return min(p.get_oldest_transaction() for p in self.members)
 
     def get_newest_transaction(self) -> date:
-        return max(p.get_newest_transaction() for p in self.people)
+        return max(p.get_newest_transaction() for p in self.members)
 
-    def calculate_expenses_difference(
+    def get_expenses_difference(
         self, p1: Person, p2: Person, category: Category | None = None
     ) -> float:
-        if not [p for p in [p1, p2] if p in self.people]:
+        if not [p for p in [p1, p2] if p in self.members]:
             logger.error(
                 "%s and %s are not both in the list of people", p1.name, p2.name
             )
             raise
-
-        return p1.calculate_expenses(category) - p2.calculate_expenses(category)
+        return p1.get_expenses(category) - p2.get_expenses(category)
 
 
 class SummaryEmail:
-    pass
+    def __init__(self, sender: str, to: list[str]) -> None:
+        self.sender = sender
+        self.to = to
+        self.subject = str()
+        self.body = str()
+
+    def add_body(self, group: Group) -> None:
+        doc, tag, text = yattag.Doc().tagtext()
+        doc.asis("<!DOCTYPE html>")
+        with tag("html"):
+            # HTML head
+            with tag("head"):
+                doc.asis(
+                    "<style>table {border-collapse: collapse; width: 100%} \
+                    th, td {border: 1px solid black; padding: 8px 12px; text-align: left;} \
+                    th {background-color: #f2f2f2;}</style>"
+                )
+            # HTML body
+            with tag("body"):
+                # Body consists of a table
+                with tag("table", border="1"):
+                    # Table header
+                    with tag("thead"):
+                        with tag("tr"):
+                            with tag("th"):
+                                text("")
+                            for category in Category:
+                                with tag("th"):
+                                    text(category.value)
+                            with tag("th"):
+                                text("Total")
+                    # Table body
+                    with tag("tbody"):
+                        # Create a row for each person
+                        for p in group.members:
+                            with tag("tr"):
+                                with tag("td"):
+                                    text(p.name)
+                                for c in Category:
+                                    with tag("td"):
+                                        text(to_currency(p.get_expenses(c)))
+                                with tag("td"):
+                                    text(to_currency(p.get_expenses()))
+                        # If there are only two people, create a row for the differences
+                        if len(group.members) == 2:
+                            p1, p2 = group.members
+                            with tag("tr"):
+                                with tag("td"):
+                                    text("Difference")
+                                for c in Category:
+                                    with tag("td"):
+                                        text(
+                                            to_currency(
+                                                group.get_expenses_difference(p1, p2, c)
+                                            )
+                                        )
+                                with tag("td"):
+                                    text(
+                                        to_currency(
+                                            group.get_expenses_difference(p1, p2)
+                                        )
+                                    )
+        self.body = doc.getvalue()
+
+    def add_subject(self, group: Group) -> None:
+        min_date = group.get_oldest_transaction
+        max_date = group.get_newest_transaction
+        self.subject = f"Transactions Summary: {min_date.strftime(DISPLAY_DATE_FORMAT)} - {max_date.strftime(DISPLAY_DATE_FORMAT)}"
+
+    def send(self) -> None:
+        ses: SESClient = boto3.client("ses", region_name="us-east-1")
+        try:
+            ses.send_email(
+                Source=self.sender,
+                Destination={"ToAddresses": self.to},
+                Message={
+                    "Subject": {"Data": self.subject},
+                    "Body": {"Html": {"Data": self.body}, "Text": {"Data": self.body}},
+                },
+            )
+        except exceptions.ClientError as ex:
+            logger.error("Error sending email: %s", ex)
+            raise
+
+
+# Main
+def lambda_handler(event: Any, context: Any) -> None:
+    bucket: str = event["Records"][0]["s3"]["bucket"]["name"]
+    key: str = event["Records"][0]["s3"]["object"]["key"]
+
+    # Read data from buckets
+    transactions = get_transactions(bucket, key)
+    config = get_config(CONFIG_BUCKET, CONFIG_KEY)
+    validate_config(config)
+
+    # Construct group and add transactions
+    members = get_members(config["People"])
+    group = Group(members)
+    group.add_transactions(transactions)
+
+    # Construct and send email
+    email = SummaryEmail(config["Owner"], [p.email for p in group.members])
+    email.add_body(group)
+    email.add_subject(group)
+    email.send()

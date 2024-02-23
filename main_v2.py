@@ -1,5 +1,3 @@
-# pylint: disable-all
-
 from __future__ import annotations
 import logging
 from datetime import datetime, date
@@ -57,7 +55,7 @@ def validate_config(config: dict) -> None:
         for p in people:
             if not (p["Name"] and p["Email"] and p["Accounts"]):
                 raise ValueError("Invalid people values")
-        owner: str = config["Owner"]
+        owner: str = config["OwnerEmail"]
         if not owner:
             raise ValueError("Invalid owner value")
     except (KeyError, ValueError) as ex:
@@ -99,15 +97,6 @@ def get_transactions(bucket: str, key: str) -> list[Transaction]:
 
 def to_currency(num: float) -> str:
     return MONEY_FORMAT.format(num)
-
-
-def get_date(name: str) -> date:
-    # decode filename if URL encoded
-    decoded_name = urllib.parse.unquote_plus(name)
-    search_results = re.compile(r"\d{4}-\d{2}-\d{2}").search(decoded_name)
-    if search_results:
-        return datetime.strptime(search_results.group(0), DATE).date()
-    return date.today()
 
 
 def get_members(people_config: list[dict]) -> list[Person]:
@@ -285,8 +274,8 @@ class SummaryEmail:
         self.body = doc.getvalue()
 
     def add_subject(self, group: Group) -> None:
-        min_date = group.get_oldest_transaction
-        max_date = group.get_newest_transaction
+        min_date = group.get_oldest_transaction()
+        max_date = group.get_newest_transaction()
         self.subject = f"Transactions Summary: {min_date.strftime(DISPLAY_DATE)} - {max_date.strftime(DISPLAY_DATE)}"
 
     def send(self) -> None:

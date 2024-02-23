@@ -1,13 +1,15 @@
+# pylint: disable-all
+# Description: RMAnalyzer AWS Lambda Function
+# Author: Rocco Davino
+
+
 from __future__ import annotations
 import logging
 from datetime import datetime, date
 import csv
 from enum import Enum
 import json
-import re
 from typing import Any
-import urllib.parse
-from typeguard import typechecked
 import boto3
 from mypy_boto3_s3.client import S3Client
 from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
@@ -55,7 +57,7 @@ def validate_config(config: dict) -> None:
         for p in people:
             if not (p["Name"] and p["Email"] and p["Accounts"]):
                 raise ValueError("Invalid people values")
-        owner: str = config["OwnerEmail"]
+        owner: str = config["Owner"]
         if not owner:
             raise ValueError("Invalid owner value")
     except (KeyError, ValueError) as ex:

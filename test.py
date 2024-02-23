@@ -6,7 +6,16 @@
 import unittest
 import boto3
 from moto import mock_aws
-import main_v2
+from main import (
+    get_config,
+    validate_config,
+    get_transactions,
+    get_members,
+    Group,
+    SummaryEmail,
+    Category,
+    to_currency,
+)
 
 
 # Test get_s3_content output
@@ -53,17 +62,17 @@ class IntegrationTest(unittest.TestCase):
         key: str = self.event["Records"][0]["s3"]["object"]["key"]
 
         # Read data from buckets
-        config = main_v2.get_config(self.config_bucket, self.config_key)
-        main_v2.validate_config(config)
-        transactions = main_v2.get_transactions(bucket, key)
+        config = get_config(self.config_bucket, self.config_key)
+        validate_config(config)
+        transactions = get_transactions(bucket, key)
 
         # Construct group and add transactions
-        members = main_v2.get_members(config["People"])
-        group = main_v2.Group(members)
+        members = get_members(config["People"])
+        group = Group(members)
         group.add_transactions(transactions)
 
         # Construct and send email
-        email = main_v2.SummaryEmail(config["Owner"], [p.email for p in group.members])
+        email = SummaryEmail(config["Owner"], [p.email for p in group.members])
         email.add_body(group)
         email.add_subject(group)
         email.send()
@@ -76,32 +85,30 @@ class IntegrationTest(unittest.TestCase):
         t = group.members[1]
         self.assertEqual(g.name, "George")
         self.assertEqual(t.name, "Tootie")
-        for c in main_v2.Category:
-            if c == main_v2.Category.DINING:
-                self.assertEqual(main_v2.to_currency(g.get_expenses(c)), "12.66")
-                self.assertEqual(main_v2.to_currency(t.get_expenses(c)), "17.00")
+        for c in Category:
+            if c == Category.DINING:
+                self.assertEqual(to_currency(g.get_expenses(c)), "12.66")
+                self.assertEqual(to_currency(t.get_expenses(c)), "17.00")
                 self.assertEqual(
-                    main_v2.to_currency(group.get_expenses_difference(g, t, c)), "-4.34"
+                    to_currency(group.get_expenses_difference(g, t, c)), "-4.34"
                 )
             else:
-                self.assertEqual(main_v2.to_currency(g.get_expenses(c)), "0.00")
-                self.assertEqual(main_v2.to_currency(t.get_expenses(c)), "0.00")
+                self.assertEqual(to_currency(g.get_expenses(c)), "0.00")
+                self.assertEqual(to_currency(t.get_expenses(c)), "0.00")
                 self.assertEqual(
-                    main_v2.to_currency(group.get_expenses_difference(g, t, c)), "0.00"
+                    to_currency(group.get_expenses_difference(g, t, c)), "0.00"
                 )
-        self.assertEqual(main_v2.to_currency(g.get_expenses()), "12.66")
-        self.assertEqual(main_v2.to_currency(t.get_expenses()), "17.00")
-        self.assertEqual(
-            main_v2.to_currency(group.get_expenses_difference(g, t)), "-4.34"
-        )
+        self.assertEqual(to_currency(g.get_expenses()), "12.66")
+        self.assertEqual(to_currency(t.get_expenses()), "17.00")
+        self.assertEqual(to_currency(group.get_expenses_difference(g, t)), "-4.34")
         self.assertEqual(email.sender, "bebas@gmail.com")
         self.assertEqual(email.to, ["boygeorge@gmail.com", "tuttifruity@hotmail.com"])
         self.assertEqual(email.subject, "Transactions Summary: 09/04/23 - 09/15/23")
 
 
-def main_v2():
+def main():
     unittest.main()
 
 
 if __name__ == "__main__":
-    main_v2()
+    main()

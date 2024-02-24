@@ -1,62 +1,101 @@
 # RMAnalyzer
 
-This script is designed to generate a monthly summary of expenses from a spreadsheet. It is intended to be run as an AWS Lambda function triggered by an S3 event. Here are the key points:
+## Description
 
-## Overview
+This script is designed to generate a summary of expenses from a spreadsheet containing transaction data. It is intended to be run as an AWS Lambda function triggered by an S3 event.
 
-- **Author**: Rocco Davino
+The data (typically the current month's transactions) is exported from my finanical app as a CSV list of raw transaction data. I wanted to summarize the data (in this case a summary of expenses per category, per person) and send a summary email in as few steps as possible.
 
-## Usage
+### Goals
 
-This script analyzes a CSV file containing financial transaction data and sends an email summary of expenses to specified recipients. The email includes a breakdown of expenses by category and calculates the difference in expenses between two people if applicable.
+- **AWS**. Leverage AWS, and in particular, SES to make sending emails simple. An AWS Lambda function triggered by an S3 event was also a natural choice for this use case.
+- **Python**. I wanted to convert the raw transaction data into data types and be able to enforce type safety to ensure accuracy. I implemented `mypy` to help with this. I tried to leverage object-oriented programming where appropriate to allow for a robust design that could be built upon later.
+- **Tests**. Write _some_ kind of test to further ensure integrity. I settled on an integration test implemented with `unittest`. The `moto` package was very helpful. This is just a personal project, and I essentially wanted to perform a single end-to-end test to make sure the main functionality is intact before pushing to production.
+- **CI/CD**. Logging into AWS to upload new Lambda function code every time I made a change quickly became tedious. My goal was to create a pipeline such that on push to `main` the code automatically deploys to AWS Lambda. I ended up achieving this with `GitHub Actions` and the Serverless Framework (`serverless`). I also use this pipeline to run the tests and check types with `mypy` before deploying as an added benefit.
 
-### Configuration
+### Links
 
-Before using this script, make sure to configure the following settings:
+- https://mypy.readthedocs.io/en/stable/getting_started.html
+- https://docs.getmoto.org/en/latest/docs/getting_started.html
+- https://realpython.com/python-testing/
+- https://www.serverless.com/framework/docs/tutorial
 
-1. **S3 Bucket**: The script assumes that the configuration file and CSV files are stored in an S3 bucket. You can specify the bucket name and file keys in the `CONFIG` dictionary.
+## Workflow
+
+1. The transaction data CSV is uploaded to an S3 bucket using a shell script (for now). Transaction data for some cats might look like:
+
+```csv
+Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Name,Custom Name,Amount,Description,Category,Note,Ignored From,Tax Deductible
+2023-08-31,2023-08-31,Credit Card,SavorOne,1313,Capital One,MADCATS DANCE,,150,MADCATS DANCE,Entertainment & Rec.,,,
+2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,,
+2023-09-04,2023-09-04,Credit Card,CREDIT CARD,1234,Chase,TIKICAT BAR,,12.66,TIKICAT BAR,Dining & Drinks,,budget,
+2023-09-12,2023-09-12,Cash,Spending Account,2121,Ally Bank,FISH MARKET,,47.71,FISH MARKET,Groceries,,,
+2023-09-15,2023-09-15,Credit Card,SavorOne,1313,Capital One,TIKICAT BAR,,17,TIKICAT BAR,Dining & Drinks,,,
+```
+
+3. This `PUT` event triggers the Lambda function.
 
 ```python
-CONFIG = {"Bucket": "rm-analyzer-config", "Key": "config.json"}
+def lambda_handler(event: Any, context: Any) -> None:
+    bucket: str = event["Records"][0]["s3"]["bucket"]["name"]
+    key: str = event["Records"][0]["s3"]["object"]["key"]
+    ...
 ```
 
-2. **Email Configuration**: Ensure that the AWS SES (Simple Email Service) is set up and that the Lambda function has access to send emails using SES.
-
-3. **People Configuration**: In the configuration file (`config.json`), you can specify the people involved, their names, email addresses, and associated account numbers. Make sure to update this configuration with your data.
+3. Config necessary for the summary is read in from a separate S3 bucket. It might look like:
 
 ```json
-"Owner": "YourEmail",
-"People": [
-    {
-        "Name": "Person1",
-        "Email": "person1@example.com",
-        "Accounts": [12345, 67890]
-    },
-    {
-        "Name": "Person2",
-        "Email": "person2@example.com",
-        "Accounts": [54321, 98765]
-    }
-]
+{
+    "People": [
+        {
+            "Name": "George",
+            "Accounts": [
+                1234
+            ],
+            "Email": "boygeorge@gmail.com"
+        },
+        {
+            "Name": "Tootie",
+            "Accounts": [
+                1313
+            ],
+            "Email": "tuttifruity@hotmail.com"
+        }
+    ],
+    "Owner": "bebas@gmail.com"
+}
 ```
 
-### Trigger
+It's validated, and then the transaction data is read in and parsed.
 
-This script is designed to be triggered by an S3 event. When a new CSV file is uploaded to the specified S3 bucket, the Lambda function is triggered automatically.
+```python
+...
+# Read data from buckets
+config = get_config(CONFIG_BUCKET, CONFIG_KEY)
+validate_config(config)
+transactions = get_transactions(bucket, key)
+...
+```
 
-## Script Structure
+4. A `Group` of `Person` objects is constructed. Each `Person` contains a `Transaction` list. The parsed transaction data is assigned to the right people.
 
-- **Constants**: Definitions of date formats, money formatting, and configuration settings.
-- **Helper Functions**: Functions for formatting money, loading configuration, reading files from S3, and sending emails using SES.
-- **Classes**: Definitions of several classes, including `Category`, `NotIgnoredFrom`, `Transaction`, `Person`, `Summary`, `SpreadsheetSummary`, `SpreadsheetParser`, and `EmailGenerator`. These classes are used for data modeling, parsing, and generating email summaries.
-- **Main Function**: The `analyze_file` function is the main entry point for analyzing the uploaded CSV file, generating a summary, and sending emails.
-- **Lambda Handler**: The `lambda_handler` function is the entry point for the AWS Lambda function. It retrieves information about the triggered S3 event and calls `analyze_file` to process the uploaded file.
+```python
+...
+# Construct group and add transactions
+members = get_members(config["People"])
+group = Group(members)
+group.add_transactions(transactions)
+...
+```
 
-## Example Usage
+5. A `SummaryEmail` is constructed and sent.
 
-To use this script, follow these steps:
-
-1. Upload a CSV file containing financial transaction data to the specified S3 bucket.
-2. The Lambda function will be triggered automatically when the file is uploaded.
-3. The script will parse the CSV data, generate a summary, and send an email to the specified recipients.
-4. Recipients will receive an email with a breakdown of expenses by category and any applicable differences between individuals.
+```python
+...
+# Construct and send email
+email = SummaryEmail(config["Owner"], [p.email for p in group.members])
+email.add_body(group)
+email.add_subject(group)
+email.send()
+...
+```

@@ -68,7 +68,7 @@ def validate_config(config: dict) -> None:
 def to_transaction(row: dict) -> Transaction | None:
     try:
         transaction_date = datetime.strptime(row["Date"], DATE).date()
-        transaction_name = row["Name"]
+        transaction_name = str(row["Name"])
         transaction_account_number = int(row["Account Number"])
         transaction_amount = float(row["Amount"])
         transaction_category = Category(row["Category"])
@@ -298,8 +298,8 @@ class SummaryEmail:
 
 # Main
 def lambda_handler(event: Any, context: Any) -> None:
-    bucket: str = event["Records"][0]["s3"]["bucket"]["name"]
-    key: str = event["Records"][0]["s3"]["object"]["key"]
+    bucket = event["Records"][0]["s3"]["bucket"]["name"]
+    key = event["Records"][0]["s3"]["object"]["key"]
 
     # Read data from buckets
     config = get_config(CONFIG_BUCKET, CONFIG_KEY)

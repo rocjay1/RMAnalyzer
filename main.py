@@ -10,6 +10,7 @@ import csv
 from enum import Enum
 import json
 from typing import Any
+from typeguard import check_type, TypeCheckError
 import boto3
 from mypy_boto3_s3.client import S3Client
 from mypy_boto3_s3.type_defs import GetObjectOutputTypeDef
@@ -51,16 +52,15 @@ def get_config(bucket: str, key: str) -> dict:
 
 
 def validate_config(config: dict) -> None:
-    # So far, only checks for non-empty dict values
     try:
-        people: list[dict] = config["People"]
+        people = config["People"]
+        check_type(people, list[dict])
         for p in people:
-            if not (p["Name"] and p["Email"] and p["Accounts"]):
-                raise ValueError("Invalid people values")
-        owner: str = config["Owner"]
-        if not owner:
-            raise ValueError("Invalid owner value")
-    except (KeyError, ValueError) as ex:
+            check_type(p["Name"], str)
+            check_type(p["Email"], str)
+            check_type(p["Accounts"], list[int])
+        check_type(config["Owner"], str)
+    except (KeyError, TypeCheckError) as ex:
         logger.error("Invalid configuration: %s", ex)
         raise
 

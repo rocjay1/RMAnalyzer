@@ -97,5 +97,4 @@ email = SummaryEmail(config["Owner"], [p.email for p in group.members])
 email.add_body(group)
 email.add_subject(group)
 email.send()
-...
 ```

@@ -19,6 +19,8 @@ The data (typically the current month's transactions) is exported from my finani
 - https://docs.getmoto.org/en/latest/docs/getting_started.html
 - https://realpython.com/python-testing/
 - https://www.serverless.com/framework/docs/tutorial
+- https://www.yattag.org/#tutorial
+- https://typeguard.readthedocs.io/en/stable/
 
 ## Workflow
 
@@ -37,8 +39,8 @@ Date,Original Date,Account Type,Account Name,Account Number,Institution Name,Nam
 
 ```python
 def lambda_handler(event: Any, context: Any) -> None:
-    bucket: str = event["Records"][0]["s3"]["bucket"]["name"]
-    key: str = event["Records"][0]["s3"]["object"]["key"]
+    bucket = event["Records"][0]["s3"]["bucket"]["name"]
+    key = event["Records"][0]["s3"]["object"]["key"]
     ...
 ```
 

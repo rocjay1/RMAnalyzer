@@ -101,9 +101,14 @@ class IntegrationTest(unittest.TestCase):
         self.assertEqual(to_currency(g.get_expenses()), "12.66")
         self.assertEqual(to_currency(t.get_expenses()), "17.00")
         self.assertEqual(to_currency(group.get_expenses_difference(g, t)), "-4.34")
+        self.assertEqual(to_currency(group.get_debt(g, t, 0.47)), "1.28")
         self.assertEqual(email.sender, "bebas@gmail.com")
         self.assertEqual(email.to, ["boygeorge@gmail.com", "tuttifruity@hotmail.com"])
         self.assertEqual(email.subject, "Transactions Summary: 09/04/23 - 09/15/23")
+
+        # Manually review the email body to make sure it looks reasonable
+        # Use https://html.onlineviewer.net/
+        print(email.body)
 
 
 def main():

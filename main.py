@@ -209,6 +209,19 @@ class Group:
             logger.error("Invalid input (%s, %s): %s", p1.name, p2.name, ex)
             raise
 
+    def get_expenses(self):
+        return sum(p.get_expenses() for p in self.members)
+
+    def get_debt(self, p1: Person, p2: Person, p1_scale_factor: float = 0.5) -> float:
+        try:
+            missing = [p for p in [p1, p2] if p not in self.members]
+            if missing:
+                raise ValueError("People args missing from group")
+            return p1_scale_factor * self.get_expenses() - p1.get_expenses()
+        except ValueError as ex:
+            logger.error("Invalid input (%s, %s): %s", p1.name, p2.name, ex)
+            raise
+
 
 class SummaryEmail:
     def __init__(self, sender: str, to: list[str]) -> None:
@@ -273,6 +286,16 @@ class SummaryEmail:
                                             group.get_expenses_difference(p1, p2)
                                         )
                                     )
+                # Expenses summary sentence
+                if len(group.members) == 2:
+                    p1, p2 = group.members
+                    k = 0.47  # Just set the scale factor here for now
+                    with tag("p"):
+                        text(
+                            f"Using a scale factor of {k} for {p1.name}, {p1.name} owes {p2.name}: "
+                            f"{to_currency(group.get_debt(p1, p2, k))}"
+                        )
+
         self.body = doc.getvalue()
 
     def add_subject(self, group: Group) -> None:

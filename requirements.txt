@@ -28,6 +28,6 @@ types-awscrt==0.20.9
 types-s3transfer==0.10.1
 typing_extensions==4.11.0
 urllib3==2.2.1
-Werkzeug==3.0.2
+Werkzeug==3.0.3
 xmltodict==0.13.0
 yattag==1.15.2

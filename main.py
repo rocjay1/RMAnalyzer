@@ -1,4 +1,3 @@
-# pylint: disable-all
 # Description: RMAnalyzer AWS Lambda Function
 # Author: Rocco Davino
 

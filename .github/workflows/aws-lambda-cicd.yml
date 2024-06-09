@@ -56,6 +56,9 @@ jobs:
       - name: Install serverless-python-requirements
         run: serverless plugin install --name serverless-python-requirements
 
+      - name: Serverless login
+        run: serverless login
+
       - name: Deploy to AWS Lambda
         run: serverless deploy
         env:

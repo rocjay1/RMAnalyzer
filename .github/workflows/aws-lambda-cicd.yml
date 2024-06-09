@@ -54,7 +54,7 @@ jobs:
         run: npm install -g serverless
 
       - name: Install serverless-python-requirements
-        run: serverless plugin install -n serverless-python-requirements
+        run: serverless plugin install --name serverless-python-requirements
 
       - name: Deploy to AWS Lambda
         run: serverless deploy

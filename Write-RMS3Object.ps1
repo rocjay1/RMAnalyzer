@@ -14,16 +14,7 @@ $fileName = $file.Name
 
 try {
     Write-S3Object -BucketName $bucketName -File $filePath 
-
-    Start-Sleep -Seconds 2
-
-    $fileCheck = Get-S3Object -BucketName $bucketName -Key $fileName
-    if (!$fileCheck) {
-        Write-Warning "$fileName was not uploaded to $bucketName"
-    }
-    else {
-        Write-Information "$fileName was uploaded to $bucketName" -InformationAction Continue
-    }
+    Write-Information "$fileName was uploaded to $bucketName" -InformationAction Continue
 } 
 catch {
     Write-Error $_

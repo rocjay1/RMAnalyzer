@@ -18,7 +18,7 @@ service: rmanalyzer
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
-frameworkVersion: '3'
+# frameworkVersion: '4'
 
 provider:
   name: aws
@@ -57,12 +57,9 @@ provider:
 #    variable1: value1
 
 # you can add packaging information here
-#package:
-#  patterns:
-#    - '!exclude-me.py'
-#    - '!exclude-me-dir/**'
-#    - include-me.py
-#    - include-me-dir/**
+package:
+ patterns:
+   - main.py
 
 plugins:
   - serverless-python-requirements

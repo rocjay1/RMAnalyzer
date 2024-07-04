@@ -288,7 +288,7 @@ class SummaryEmail:
                 # Expenses summary sentence
                 if len(group.members) == 2:
                     p1, p2 = group.members
-                    k = 0.47  # Just set the scale factor here for now
+                    k = 0.445  # Just set the scale factor here for now
                     with tag("p"):
                         text(
                             f"Using a scale factor of {k} for {p1.name}, {p1.name} owes {p2.name}: "
